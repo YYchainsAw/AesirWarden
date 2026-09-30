@@ -1,16 +1,25 @@
 # UI 与流程设计
 
-> 状态：目标流程；资产存在不等于接线已验证 · 2026-09-29
+> 状态：目标流程；资产存在不等于接线已验证 · 2026-09-30
 
-## 最小答辩流程
+完整关卡顺序与重试规则见[第一关游戏流程](GameFlow.md)。主菜单位于第一关营火场景，不另设菜单地图。
 
-`安全入口 → Boss 战 → Victory/Defeat → 结果页 → Retry/返回`。结果页应显示明确结局和下一步操作；重试恢复玩家/Boss 状态、清除旧 Widget 与事件绑定并创建新的 Episode。菜单、新游戏/继续和持久检查点属于下一层完善，不得作为当前已完成流程展示。
+## 营火主菜单
 
-当前可定位 [WBP_CombatResult](../../../Content/Aesir/UI/Results/WBP_CombatResult.uasset)、[WBP_CombatHUD](../../../Content/Aesir/UI/HealthBars/WBP_CombatHUD.uasset)及一次性 [OnCombatEnded](../../../Source/AesirWarden/Private/Framework/AesirCombatPrototypeGameMode.cpp) 结算事件。尚未在此轮通过 PIE 核查 Widget 显示、按钮功能、输入焦点和打包行为。
+镜头以主角和火堆为左侧视觉中心，右侧是清晰可聚焦的操作区。首版显示“开始游戏”和“退出游戏”；“设置”仅在功能完成后加入，“继续游戏”在没有存档设计前不显示。菜单态使用 UI 输入焦点，禁止玩家移动、攻击及 Boss 战斗行为。按钮应支持键鼠和手柄，并避免文字与角色、火焰高亮区域重叠。
 
-## 交互原则
+点击开始后立即防止重复输入，菜单淡出，开场运镜与主角起身接续；运镜结束后切回游戏输入并显示关卡 HUD。跳过过场也必须恢复相同的相机、焦点、HUD 和玩家状态。
 
-- Boss 的不可防御攻击应有独立、可辨认的提示；结果页不能遮挡或误触重试。
-- 战斗 HUD 表达玩家生命、Boss 状态和必要的符文冷却；只有功能实际接入后才显示相应模块。
-- RL/BT 模式、模型 ID、回退原因属于实验/调试界面或遥测；普通玩家只需要可理解的战斗反馈。
-- 后续应补主菜单、设置、检查点无效提示和键鼠/手柄焦点路径；每条流程由[验证矩阵](../../06_Test_Doc/VerificationMatrix.md)追踪。
+## 关卡与 Boss 战
+
+关卡前段 HUD 只显示已接通的生命、守防和必要操作提示。抵达 Boss 场地触发入场动画时，暂停玩家战斗输入；过场结束后显示 Boss 血条并开放控制。Boss 的不可防御攻击应有独立、可辨认的提示。符文冷却等未接通模块不提前展示。
+
+BT/PPO 模式、模型 ID 与回退原因属于实验界面或遥测，普通玩家界面只呈现可理解的战斗反馈。
+
+## 结算与按钮
+
+Boss 死亡后先播放结束动画，再显示通关页；玩家死亡反应结束后显示失败页。结果页应明确结局并给出“重试”和“返回主菜单”，防止战斗输入穿透 UI 或连续点击导致重复重启。
+
+重试重新游玩**第一关开头**：跳过营火菜单与开场运镜，玩家从营火初始可玩位置直接开始。返回主菜单则重新显示同一第一关的营火构图、坐姿主角和右侧菜单。输入焦点、HUD、相机和 Widget 必须与对应状态一致。
+
+当前可定位 [WBP_CombatResult](../../../Content/Aesir/UI/Results/WBP_CombatResult.uasset)、[WBP_CombatHUD](../../../Content/Aesir/UI/HealthBars/WBP_CombatHUD.uasset)及一次性 [OnCombatEnded](../../../Source/AesirWarden/Private/Framework/AesirCombatPrototypeGameMode.cpp) 结算事件。主菜单、按钮、运镜交接及打包行为尚未完成本工程验收；状态见[验证矩阵](../../06_Test_Doc/VerificationMatrix.md)。

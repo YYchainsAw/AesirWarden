@@ -8,7 +8,7 @@
 
 ## 可玩目标与范围
 
-目标为 Windows 上约 10–15 分钟的稳定垂直切片：进入 Boss 战、完成胜负、查看结果、重试或返回。主菜单、引导、检查点可在核心实验完成后补齐；普通敌人遭遇与语音战术同伴不阻塞答辩。当前工程已有玩家战斗、Boss BT/GAS、Observation、Policy Client、Telemetry 的代码或资产；完整 PPO 对照、打包流程与体验仍需验证。逐项状态见[范围表](02_GoalsAndScope.md)。
+目标为 Windows 上约 10–15 分钟的稳定垂直切片：在第一关营火场景进入主菜单，运镜后游玩关卡前段，抵达 Boss 场地观看入场动画，完成胜负、结尾与结果页；失败后从关卡开头重试。主菜单与过场在核心 Boss 实验稳定后接入；检查点、普通敌人遭遇与语音战术同伴不阻塞答辩。当前工程已有玩家战斗、Boss BT/GAS、Observation、Policy Client、Telemetry 的代码或资产；完整 PPO 对照、打包流程与体验仍需验证。具体玩家路径见[第一关流程](../02_Design_Doc/GDD/GameFlow.md)，逐项状态见[范围表](02_GoalsAndScope.md)。
 
 ## 技术与个人工作
 

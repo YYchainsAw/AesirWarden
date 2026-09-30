@@ -9,7 +9,7 @@
 | 读者 | 入口 |
 | --- | --- |
 | 评审与试玩者 | [项目简介](01_Project_Overview/01_ProjectBrief.md) → [目标与范围](01_Project_Overview/02_GoalsAndScope.md) → [RL 研究入口](08_RL_Research/README.md) |
-| 游戏设计 | [核心循环](02_Design_Doc/GDD/CoreLoop.md)、[战斗设计](02_Design_Doc/GDD/CombatDesign.md)、[敌人设计](02_Design_Doc/GDD/EnemyDesign.md) |
+| 游戏设计 | [游戏流程](02_Design_Doc/GDD/GameFlow.md)、[核心循环](02_Design_Doc/GDD/CoreLoop.md)、[战斗设计](02_Design_Doc/GDD/CombatDesign.md)、[敌人设计](02_Design_Doc/GDD/EnemyDesign.md) |
 | 技术开发 | [总体架构](02_Design_Doc/TDD/Architecture.md)、[GAS 架构](02_Design_Doc/TDD/GAS_Architecture.md)、[环境搭建](05_Development_Guide/SetupEnv.md) |
 | 验证与发布 | [验证矩阵](06_Test_Doc/VerificationMatrix.md)、[已知问题](06_Test_Doc/KnownIssues.md)、[发布检查](07_Release/ReleaseChecklist.md) |
 

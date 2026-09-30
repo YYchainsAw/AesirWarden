@@ -2,9 +2,11 @@
 
 > 状态：答辩循环为目标设计；成长循环为后续设计 · 2026-09-29
 
+从主菜单到过场、Boss 战、结算和重试的完整玩家路径见[答辩版游戏流程](GameFlow.md)。
+
 ## 答辩垂直切片
 
-`进入遭遇 → 观察 Boss → 攻击／防御／闪避 → 胜负结算 → 查看结果 → 重试或退出`。每次重试应恢复战斗入口并生成新的 Boss Episode；这项闭环尚未在当前工程完成端到端验证。[GameMode](../../../Source/AesirWarden/Private/Framework/AesirCombatPrototypeGameMode.cpp)已有一次性胜负事件，结果 Widget 资产存在；菜单、重试接线和 Windows 打包仍需测试。
+`进入遭遇 → 观察 Boss → 攻击／防御／闪避 → 胜负结算 → 查看结果 → 重试或退出`。重试从第一关营火起点重新游玩，再次抵达 Boss 场地时生成新的 Boss Episode；这项闭环尚未在当前工程完成端到端验证。[GameMode](../../../Source/AesirWarden/Private/Framework/AesirCombatPrototypeGameMode.cpp)已有一次性胜负事件，结果 Widget 资产存在；菜单、重试接线和 Windows 打包仍需测试。
 
 玩家面对的核心决策是读懂攻击提示并在攻击、格挡、完美防御和闪避之间选择。Boss 由 BT 或冻结 RL 策略选择高层战术，两种模式使用同一个合法执行入口；策略模式只为实验配置，不应在普通玩家 UI 暴露训练细节。
 
