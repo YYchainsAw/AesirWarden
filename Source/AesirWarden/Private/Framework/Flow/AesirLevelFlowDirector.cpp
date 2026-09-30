@@ -39,6 +39,11 @@ void AAesirLevelFlowDirector::BeginPlay()
 		UE_LOG(LogAesirWarden, Error, TEXT("Level flow: configure MenuCamera and MainMenuWidgetClass on %s."), *GetName());
 		return;
 	}
+	if (IsValid(OpeningSequenceActor) && OpeningSequenceActor->PlaybackSettings.bAutoPlay)
+	{
+		UE_LOG(LogAesirWarden, Error, TEXT("Level flow: disable Auto Play on the opening Sequence actor before starting the level."));
+		return;
+	}
 
 	InitializationStartedAt = GetWorld()->GetTimeSeconds();
 	// Initialize on a later frame, after GameMode's spawn/possession and Blueprint BeginPlay work.
@@ -123,7 +128,7 @@ bool AAesirLevelFlowDirector::RequestStartGame()
 	PlayerControllerRef->SetInputMode(FInputModeUIOnly());
 	PlayerControllerRef->FlushPressedKeys();
 	SetFlowState(EAesirLevelFlowState::OpeningCinematic);
-	if (CurrentState != EAesirLevelFlowState::OpeningCinematic || IsActorBeingDestroyed())
+	if (CurrentState != EAesirLevelFlowState::OpeningCinematic || bCameraHandoffStarted || IsActorBeingDestroyed())
 	{
 		return true;
 	}
@@ -144,6 +149,13 @@ bool AAesirLevelFlowDirector::RequestStartGame()
 			Settings.StartTime = 0.0f;
 			Settings.PlayRate = 1.0f;
 			ActiveOpeningPlayer->SetPlaybackSettings(Settings);
+			// Changing playback settings alone does not rewind the existing sequence player.
+			ActiveOpeningPlayer->SetPlaybackPosition(FMovieSceneSequencePlaybackParams(
+				ActiveOpeningPlayer->GetStartTime().Time, EUpdatePositionMethod::Jump));
+			if (CurrentState != EAesirLevelFlowState::OpeningCinematic || bCameraHandoffStarted || IsActorBeingDestroyed())
+			{
+				return true;
+			}
 			ActiveOpeningPlayer->OnFinished.AddUniqueDynamic(this, &AAesirLevelFlowDirector::HandleOpeningSequenceFinished);
 			ActiveOpeningPlayer->OnStop.AddUniqueDynamic(this, &AAesirLevelFlowDirector::HandleOpeningSequenceFinished);
 			ActiveOpeningPlayer->Play();
@@ -270,7 +282,11 @@ void AAesirLevelFlowDirector::SetFlowState(EAesirLevelFlowState NewState)
 	UE_LOG(LogAesirWarden, Display, TEXT("Level flow: %s -> %s"),
 		*UEnum::GetValueAsString(PreviousState), *UEnum::GetValueAsString(NewState));
 	OnFlowStateChanged.Broadcast(PreviousState, NewState);
-	OnPhaseChanged(PreviousState, NewState);
+	// A listener may have synchronously requested another transition or destroyed this actor.
+	if (CurrentState == NewState && !IsActorBeingDestroyed())
+	{
+		OnPhaseChanged(PreviousState, NewState);
+	}
 }
 
 void AAesirLevelFlowDirector::UnbindOpeningSequence()

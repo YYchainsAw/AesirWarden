@@ -30,8 +30,7 @@ public class AesirWarden : ModuleRules
 			"MovieScene",
 			"HTTP",
 			"Json",
-			"JsonUtilities",
-			"LevelSequence"
+			"JsonUtilities"
 		});
 
 		// Uncomment if you are using Slate UI
