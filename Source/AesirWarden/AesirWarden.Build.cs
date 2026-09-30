@@ -26,9 +26,12 @@ public class AesirWarden : ModuleRules
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
+			"LevelSequence",
+			"MovieScene",
 			"HTTP",
 			"Json",
-			"JsonUtilities"
+			"JsonUtilities",
+			"LevelSequence"
 		});
 
 		// Uncomment if you are using Slate UI
