@@ -1,0 +1,58 @@
+# Unreal-generated files and caches
+/Binaries/
+/DerivedDataCache/
+/Intermediate/
+/Saved/
+**/Binaries/
+**/Intermediate/
+
+# Local IDE files
+/.vs/
+/.idea/
+/.vscode/
+*.sln
+*.slnx
+*.suo
+*.VC.db
+*.VC.opendb
+*.DotSettings.user
+/.vsconfig
+
+# Local credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+*.key
+
+# Public repository: allow project-authored systems and selected animation setup.
+# Third-party source assets, animation sequences with licensed motion data, the
+# template-based level and its external actor data stay out of the repository.
+/Content/*
+!/Content/Aesir/
+/Content/Aesir/*
+!/Content/Aesir/Abilities/
+!/Content/Aesir/AI/
+!/Content/Aesir/Animations/
+!/Content/Aesir/Characters/
+!/Content/Aesir/Framework/
+!/Content/Aesir/Input/
+!/Content/Aesir/UI/
+
+# Explicit safeguards for known non-public asset locations.
+/Content/ThirdParty/
+/Content/Characters/
+/Content/__ExternalActors__/
+/Content/__ExternalObjects__/
+/Content/Aesir/Maps/
+
+# Animation assets default to excluded, including future moved/imported clips.
+# Reopen only AnimBP, Blend Space, Notify Blueprints and Montage folders.
+/Content/Aesir/Animations/**
+!/Content/Aesir/Animations/**/
+!/Content/Aesir/Animations/**/ABP_*.uasset
+!/Content/Aesir/Animations/**/BS_*.uasset
+!/Content/Aesir/Animations/**/AN_*.uasset
+!/Content/Aesir/Animations/**/ANS_*.uasset
+!/Content/Aesir/Animations/**/Montages/**/*.uasset

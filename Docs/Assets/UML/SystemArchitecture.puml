@@ -1,0 +1,37 @@
+@startuml SystemArchitecture
+' AesirWarden · static source/asset mapping · 2026-09-29
+' Source presence does not prove a complete UE episode or packaged deployment.
+title AesirWarden - 核心组件边界（源码/资产可定位）
+skinparam componentStyle rectangle
+skinparam backgroundColor #FAFAF7
+left to right direction
+
+actor 玩家
+package "Unreal Engine 5.8 / AesirWarden" {
+  [玩家战斗与输入] as Player
+  [Boss Observation] as Observation
+  [BT_AesirBoss] as BT
+  [Policy Client] as Client
+  [Boss Action Component] as Action
+  [GAS / ASC / GA / GE] as GAS
+  [Telemetry / Reward] as Telemetry
+  [GameMode / Result UI] as Match
+}
+cloud "本机 Python Boss 推理 :8012\n冻结 PPO" as Python
+
+玩家 --> Player
+Player --> Observation : 战斗状态
+Observation --> Client : v4 / 26 特征
+BT --> Action : 高层动作
+Client --> Python : HTTP 决策
+Python --> Client : Action ID 0..8
+Client --> Action : 同一动作边界
+Action --> GAS : 校验并激活
+Action --> Telemetry : typed Outcome
+GAS --> Telemetry : 战斗结果
+GAS --> Match : 胜负事实
+note bottom of Python
+  模型完整 UE Episode、故障回退和
+  Windows 部署仍待运行验证。
+end note
+@enduml

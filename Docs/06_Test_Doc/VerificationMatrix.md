@@ -1,0 +1,18 @@
+# 验证矩阵
+
+> 状态：2026-09-29 静态审查。下列“待测”未在本轮运行 PIE、Windows 打包或正式实验；旧工程冒烟不计作本工程通过。
+
+| ID | 验证目标 | 当前证据 | 下一次实际验收 | 状态 |
+| --- | --- | --- | --- | --- |
+| COMBAT-01 | 玩家轻/重击、锁定、闪避、Guard 与受击规则 | C++、输入/GA 资产存在 | 在目标 Boss 关卡按[战斗用例](TestCase_Combat.md)逐项录屏与记日志 | 待测 |
+| BT-01 | `BT_AesirBoss` 完整 Episode 经共享 Action/GAS | BT/BB、任务、执行器、遥测源码/资产存在 | 记录每次 Action、Outcome、伤害与终局 | 待测 |
+| RL-CONTRACT-01 | UE v4/26 特征与 Python 完整请求一致；9 动作合法执行 | 两端源码静态匹配 | 保存同一次 UE 请求/响应与 typed Outcome | 待测 |
+| RL-FAULT-01 | 服务断开/超时/非法 Action 后安全回 BT | 回退入口存在；失败计数问题仍在 | 修复后故障注入、检查 3 连错与胜负结算 | 待修复/待测 |
+| RL-COMPARE-01 | UE BT 与 PPO 同条件成组对照 | 旧 Python 选模产物存在 | 先冻结方案，再采集原始 Episode、指标与区间 | 未开始 |
+| MATCH-01 | 单次胜负、结果 UI、Retry 新 Episode、返回 | GameMode 一次结算与 Widget 资产存在 | PIE 与 Windows 完整流程及重复重试 | 待测 |
+| SAVE-01 | 菜单/检查点加载 | 未发现 SaveGame 实现 | P1 实现后验证有效/无效检查点 | 未开始 |
+| MAGIC-01 | 两符文装备/施放/冷却/存档 | 属性与 GAS 基础存在 | 完整能力接入后按[符文用例](TestCase_Magic.md)执行 | 未开始 |
+| BUILD-01 | Windows 包可运行、Boss 服务故障不中断 | 当前无本轮打包结果 | 保存构建配置、硬件、日志、帧率和失败样本 | 未开始 |
+| AUTH-01 | 资产、AI、个人贡献归属 | [来源表](../01_Project_Overview/05_CreditsAndProvenance.md)框架已建立 | 逐资产许可和最终讲稿人工核查 | 未开始 |
+
+运行每条用例时填写：构建/commit 或文件哈希、地图、策略模式、设备、时间、步骤、实际结果、日志/录屏/遥测路径、执行人。状态只有在原始证据可追溯时提升。

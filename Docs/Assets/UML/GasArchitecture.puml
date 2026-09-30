@@ -1,0 +1,29 @@
+@startuml GasArchitecture
+' AesirWarden · current GAS source and asset mapping · 2026-09-29
+title AesirWarden - GAS 与 Boss 动作边界
+skinparam componentStyle rectangle
+skinparam backgroundColor #FAFAF7
+left to right direction
+
+component "BT / 冻结 PPO\n高层动作" as Policy
+component "UAesirBossActionComponent\n校验与 Action→Ability" as Action
+component "UAesirAbilitySystemComponent" as ASC
+component "GameplayAbility\nGA_Boss_* / GA_Player_Guard" as GA
+component "GameplayEffect\n伤害/冷却/状态" as GE
+component "UAesirAttributeSet\nHealth/MaxHealth/Damage" as Core
+component "UAesirPlayerAttributeSet\nGuard/战斗派生值" as Player
+component "Boss Telemetry" as Tel
+
+Policy --> Action : EAesirBossAction
+Action --> ASC : CanActivate / TryActivate
+ASC --> GA : 激活
+GA --> GE : 应用效果
+GE --> Core : 修改核心属性
+GE --> Player : 修改玩家属性
+Action --> Tel : Accepted / typed 拒绝
+Core --> Tel : 伤害与终局
+note bottom of Action
+  Accepted 只表示能力启动，
+  不等于命中或动作完成。
+end note
+@enduml

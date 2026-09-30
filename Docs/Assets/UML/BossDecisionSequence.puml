@@ -1,0 +1,29 @@
+@startuml BossDecisionSequence
+' AesirWarden · high-level interface contract · 2026-09-29
+' Runtime PPO branch and failure injection remain unverified in this project.
+title AesirWarden - Boss 高层决策与共享执行
+skinparam backgroundColor #FAFAF7
+actor "决策时机" as Tick
+participant "Observation" as Obs
+participant "BT 或 Policy Client" as Policy
+participant "Boss Action Component" as Action
+participant "GAS ASC / GA" as GAS
+participant "Telemetry" as Tel
+
+Tick -> Obs : 构造 v4 观察
+Obs --> Policy : 26 特征及动作可用性
+Policy -> Action : EAesirBossAction + Target
+Action -> Action : 权威/目标/状态/配置检查
+alt 合法
+  Action -> GAS : CanActivate / TryActivateAbilityByClass
+  GAS --> Action : 成功或 GAS 拒绝
+else 本地检查拒绝
+  Action -> Action : typed 失败原因
+end
+Action --> Tel : ActionOutcome 与时间
+GAS --> Tel : 伤害/终局事件
+note over Policy,Tel
+  BT 和 PPO 应共用此边界。
+  完整 PPO Episode 与回退故障测试待验收。
+end note
+@enduml
