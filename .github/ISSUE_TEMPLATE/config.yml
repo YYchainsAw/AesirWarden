@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+- name: 项目文档与环境说明
+  url: https://github.com/YYchainsAw/AesirWarden/blob/main/Docs/README.md
+  about: 查看范围、架构、环境搭建、接口契约和公开资产边界。
+- name: 里程碑与交付目标
+  url: https://github.com/YYchainsAw/AesirWarden/milestones
+  about: 查看 M1、M2、M3 的范围、完成条件和依赖关系。

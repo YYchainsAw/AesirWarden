@@ -1,0 +1,141 @@
+name: 测试验收
+description: 规划或记录战斗、流程、故障注入及 Windows 验收，区分待测与实际结果。
+title: '[测试] '
+labels:
+- type:test
+body:
+- type: markdown
+  attributes:
+    value: |-
+      创建后自动添加 `type:test` 标签。创建测试任务时可以尚未执行；源码、编译、PIE、Windows 包和正式实验的证据分别记录。
+
+      优先级、模块和里程碑字段记录建议归属，创建后由维护者设置对应标签和里程碑。
+      需要运行验收或实验数据时，按实际任务添加 `needs:runtime-verification` 或 `needs:experiment-evidence`。
+
+      [项目范围](https://github.com/YYchainsAw/AesirWarden/blob/main/Docs/01_Project_Overview/02_GoalsAndScope.md) · [已知问题](https://github.com/YYchainsAw/AesirWarden/blob/main/Docs/06_Test_Doc/KnownIssues.md) · [里程碑](https://github.com/YYchainsAw/AesirWarden/milestones)
+- type: textarea
+  id: target
+  attributes:
+    label: 验证目标与当前依据
+    description: 说明待验证的行为、当前实现依据及对应验证项 ID。
+    placeholder: |-
+      验证目标 / ID（如 MATCH-01）：
+      当前源码、资产或运行依据：
+      当前状态（未执行 / 已执行待核对 / 回归）：
+  validations:
+    required: true
+- type: textarea
+  id: environment
+  attributes:
+    label: 测试版本、环境与初态
+    description: 记录目标构建、地图、设备、策略与初始状态；计划阶段可列出待确认项。
+    placeholder: |-
+      UE / commit / Windows 构建：
+      地图 / 资产快照：
+      硬件 / 图形设置：
+      策略、服务、模型、Schema（如涉及）：
+      初态与测试数据：
+  validations:
+    required: true
+- type: dropdown
+  id: priority
+  attributes:
+    label: 建议优先级
+    description: 根据当前验收范围选择；尚未确定时选待确认。
+    options:
+    - P0 — 当前验收必需（priority:p0）
+    - P1 — P0 稳定后的演示完善（priority:p1）
+    - 后续 — 当前验收之外（priority:later）
+    - 待确认
+  validations:
+    required: true
+- type: dropdown
+  id: areas
+  attributes:
+    label: 影响模块
+    description: 通常选择 1–2 个主要模块；必要时可多选。
+    multiple: true
+    options:
+    - area:combat — 战斗规则、命中、防御与锁定
+    - area:gas — 能力、属性、效果与伤害结算
+    - area:player — 玩家、移动、输入与相机
+    - area:boss-ai — 行为树、共享执行器与回退
+    - area:boss-rl — 观测、策略、奖励、遥测与评估
+    - area:companion — 同伴与战术订单
+    - area:services — UE 侧 HTTP/JSON 与外部服务集成
+    - area:animation — 动画、Montage 与通知
+    - area:ui — HUD、菜单与结果界面
+    - area:level-flow — 第一关、Boss 遭遇、结算与重试
+    - area:build — 工程配置、编译、Cook 与 Windows 包
+    - area:assets — 许可、公开范围、依赖恢复与快照
+    - 文档、跨模块或待确认（在正文说明）
+  validations:
+    required: true
+- type: dropdown
+  id: milestone
+  attributes:
+    label: 建议里程碑
+    description: 后续范围可以不归属当前三个里程碑；实际归属由维护者设置。
+    options:
+    - M1 · P0 单 Boss 可运行闭环与 Windows 基线包
+    - M2 · P0 BT–PPO 可复现对照与研究证据
+    - M3 · P1 第一关完整表现与 Windows 演示交付
+    - 后续 / 暂不归属
+    - 待确认
+  validations:
+    required: true
+- type: textarea
+  id: steps
+  attributes:
+    label: 操作步骤与覆盖范围
+    description: 分别列出正常、异常、边界与重复运行步骤；尚未执行时写计划。
+    placeholder: |-
+      1. 准备环境和初态
+      2. 执行操作或故障注入
+      3. 观察输出和清理
+      4. 重复/回归路径
+  validations:
+    required: true
+- type: textarea
+  id: acceptance
+  attributes:
+    label: 通过条件
+    description: 给出逐项预期与判断方法；性能任务在运行前明确硬件、指标和判据。
+    placeholder: |-
+      - [ ] 正常路径达到约定结果
+      - [ ] 异常/边界路径达到约定结果
+      - [ ] 重复运行无残留状态
+      具体指标与判断方式：
+  validations:
+    required: true
+- type: textarea
+  id: evidence_plan
+  attributes:
+    label: 需要保存的证据
+    description: 定义版本关联、日志、录屏、请求/响应、Episode 和产物的保存位置。
+    placeholder: |-
+      版本 / 构建 / 模型哈希：
+      日志 / 录屏 / 遥测路径：
+      执行人、设备、时间与结果记录方式：
+  validations:
+    required: true
+- type: textarea
+  id: actual
+  attributes:
+    label: 实际执行结果
+    description: 执行后填写通过/失败/未执行及对应证据；新建计划任务可留空，关闭时补齐。
+    placeholder: |-
+      执行时间与设备：
+      步骤 → 实际结果 → 通过/失败：
+      失败样本与后续 Issue：
+      证据链接/附件：
+  validations:
+    required: false
+- type: textarea
+  id: related
+  attributes:
+    label: 关联问题与依赖
+    description: 可填写 Issue/PR、KI-xx、验证项 ID、设计文档和前置任务。
+    placeholder: '例如：KI-01、RL-FAULT-01；依赖 #...；相关文档/源码路径...'
+  validations:
+    required: false

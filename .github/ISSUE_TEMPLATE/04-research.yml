@@ -1,0 +1,145 @@
+name: 研究任务
+description: 规划 RL 契约、训练选模或 BT–PPO 实验，明确冻结配置、数据与结论边界。
+title: '[研究] '
+labels:
+- type:research
+body:
+- type: markdown
+  attributes:
+    value: |-
+      创建后自动添加 `type:research` 标签。研究任务以方案和证据可核验为完成标准；UE BT 与模拟器规则基线的结果分别报告。
+
+      优先级、模块和里程碑字段记录建议归属，创建后由维护者设置对应标签和里程碑。
+      需要运行验收或实验数据时，按实际任务添加 `needs:runtime-verification` 或 `needs:experiment-evidence`。
+
+      [项目范围](https://github.com/YYchainsAw/AesirWarden/blob/main/Docs/01_Project_Overview/02_GoalsAndScope.md) · [已知问题](https://github.com/YYchainsAw/AesirWarden/blob/main/Docs/06_Test_Doc/KnownIssues.md) · [里程碑](https://github.com/YYchainsAw/AesirWarden/milestones)
+- type: textarea
+  id: question
+  attributes:
+    label: 研究问题与当前依据
+    description: 说明希望回答的问题、已有证据与不足；结果允许未发现改善。
+    placeholder: |-
+      研究问题 / 假设：
+      已有文档、数据或训练记录：
+      当前证据不足与结论边界：
+  validations:
+    required: true
+- type: dropdown
+  id: level
+  attributes:
+    label: 任务层级
+    description: 选择本任务的主要工作，不把模拟器结果当作 UE 对照。
+    options:
+    - 契约 / 奖励 / 训练配置设计
+    - 训练 / 选模 / 复现资料
+    - 独立模拟器评估（RuleBossPolicy 与 PPO）
+    - UE 游戏内成组对照（BT_AesirBoss 与 PPO）
+    - 统计分析 / 报告 / 证据登记
+    - 体验评估方案或执行
+  validations:
+    required: true
+- type: dropdown
+  id: priority
+  attributes:
+    label: 建议优先级
+    description: 根据当前验收范围选择；尚未确定时选待确认。
+    options:
+    - P0 — 当前验收必需（priority:p0）
+    - P1 — P0 稳定后的演示完善（priority:p1）
+    - 后续 — 当前验收之外（priority:later）
+    - 待确认
+  validations:
+    required: true
+- type: dropdown
+  id: areas
+  attributes:
+    label: 影响模块
+    description: 通常选择 1–2 个主要模块；必要时可多选。
+    multiple: true
+    options:
+    - area:combat — 战斗规则、命中、防御与锁定
+    - area:gas — 能力、属性、效果与伤害结算
+    - area:player — 玩家、移动、输入与相机
+    - area:boss-ai — 行为树、共享执行器与回退
+    - area:boss-rl — 观测、策略、奖励、遥测与评估
+    - area:companion — 同伴与战术订单
+    - area:services — UE 侧 HTTP/JSON 与外部服务集成
+    - area:animation — 动画、Montage 与通知
+    - area:ui — HUD、菜单与结果界面
+    - area:level-flow — 第一关、Boss 遭遇、结算与重试
+    - area:build — 工程配置、编译、Cook 与 Windows 包
+    - area:assets — 许可、公开范围、依赖恢复与快照
+    - 文档、跨模块或待确认（在正文说明）
+  validations:
+    required: true
+- type: dropdown
+  id: milestone
+  attributes:
+    label: 建议里程碑
+    description: 后续范围可以不归属当前三个里程碑；实际归属由维护者设置。
+    options:
+    - M1 · P0 单 Boss 可运行闭环与 Windows 基线包
+    - M2 · P0 BT–PPO 可复现对照与研究证据
+    - M3 · P1 第一关完整表现与 Windows 演示交付
+    - 后续 / 暂不归属
+    - 待确认
+  validations:
+    required: true
+- type: textarea
+  id: protocol
+  attributes:
+    label: 方案与需冻结的配置
+    description: 写明任务适用的版本和控制变量；正式采集前冻结未定项。仅设计/分析任务可注明不采集。
+    placeholder: |-
+      任务范围与执行条件：
+      UE / 服务 commit、构建、地图与 Boss 资产：
+      模型 SHA、训练/模拟器/奖励版本、Observation/Action 版本：
+      画像、初态、种子、每条件局数、策略顺序：
+      设备、图形设置、性能判据：
+      待确认项 / 不适用项：
+  validations:
+    required: true
+- type: textarea
+  id: data_analysis
+  attributes:
+    label: 数据与分析计划
+    description: 说明采集/分析方法、主指标、超时/中止/排除规则和统计方法；独立测试不能复用训练、调参或选模数据。
+    placeholder: |-
+      原始数据来源与保存方式：
+      独立测试划分（历史 900 局仅为选模集）：
+      主指标、区间/效果大小与分画像分析：
+      失败、超时、中止、排除记录：
+      分析命令 / 脚本 / 可复现方法：
+  validations:
+    required: true
+- type: textarea
+  id: acceptance
+  attributes:
+    label: 任务完成条件与交付物
+    description: 限定在本任务范围；方案、采集、分析和报告任务分别定义交付，不把 PPO 胜出作为门槛。
+    placeholder: |-
+      - [ ] 适用配置已冻结或设计决策已记录
+      - [ ] 本任务要求的数据/分析/报告可复查
+      - [ ] 记录版本、路径、哈希与生成命令
+      - [ ] 明确失败例和结论限制，更新对应证据登记
+  validations:
+    required: true
+- type: textarea
+  id: evidence
+  attributes:
+    label: 已有证据与附件
+    description: 填写日志、录屏、请求/响应、遥测或报告链接，可拖入附件；本地文件写明路径和保管位置。尚无证据可留空。
+    placeholder: |-
+      证据路径/链接：
+      对应 commit、构建或文件哈希：
+      执行时间与实际结果：
+  validations:
+    required: false
+- type: textarea
+  id: related
+  attributes:
+    label: 关联问题与依赖
+    description: 可填写 Issue/PR、KI-xx、验证项 ID、设计文档和前置任务。
+    placeholder: '例如：KI-01、RL-FAULT-01；依赖 #...；相关文档/源码路径...'
+  validations:
+    required: false
