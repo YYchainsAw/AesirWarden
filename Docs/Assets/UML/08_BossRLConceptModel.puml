@@ -1,0 +1,144 @@
+@startuml 08_BossRLConceptModel
+' Diagram: RL-CM-01; Model: To-Be / conceptual requirements baseline 2026-10-08
+' Purpose: Boss RL domain concepts and multiplicities across training, inference and evaluation
+' Engineering baseline: AesirWarden / aesir-ai-service; schema v4; protocol 1.0
+' UE: develop ea4c8052f5df319c2d3b7b8c8dfcf2f684efb408
+' AI: main 52388df5832e8910bd580fcdbb992796f8259cbd
+' Evidence UE: Docs/08_RL_Research/01_BossRLContract.md; 03_EvaluationProtocol.md
+' Evidence UE: Source/AesirWarden/Public/AI/Boss/AesirBossTelemetryTypes.h
+' Evidence AI: rl/boss/contract.py; sim.py; rewards.py; inference.py; evaluation.py
+' Evidence AI: scripts/rl/boss/train.py; models/rl/boss/deployment/*.json
+' Last verified: 2026-10-08; static source and artifact review; no new UE runtime evidence
+
+title AesirWarden — Boss RL 核心概念类图（需求模型）
+skinparam defaultFontName Microsoft YaHei
+skinparam backgroundColor #FAFAF7
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam nodesep 45
+skinparam ranksep 60
+hide methods
+hide circle
+
+package "离线训练与选模" as Offline {
+  class "训练配置\nTrainingConfiguration" as Config {
+    训练种子与超参数
+    模拟器版本与玩家画像
+    观测契约版本
+  }
+  class "训练任务\nTrainingRun" as Training {
+    训练步数与任务状态
+    恢复检查点来源（可选）
+  }
+  class "模型产物\nModelArtifact" as Model {
+    模型标识与保存路径
+    SHA-256 与训练清单
+    契约、模拟器与奖励版本
+  }
+  class "选模记录\nPolicySelection" as Selection {
+    候选范围与选模依据
+    选定模型标识
+  }
+}
+
+package "冻结推理与战斗记录" as Runtime {
+  class "策略部署\nPolicyDeployment" as Deployment {
+    加载模型标识
+    服务地址与配置
+    参数在推理期间保持固定
+  }
+  class "Boss Episode\nBossEpisode" as Episode {
+    Episode 标识与运行环境
+    策略条件、种子与玩家画像
+    开始、终止与胜负状态
+  }
+  class "战斗观测\nCombatObservation" as Observation {
+    Schema v4 与观测序号
+    26 项归一化特征 [0,1]
+    末 9 项为动作可用性
+  }
+  class "决策记录\nDecisionRecord" as Decision {
+    请求标识与观测序号
+    策略来源与模型标识（可选）
+    是否可行动、原因与耗时
+  }
+  enum "高层动作\nBossAction" as Action {
+    0 LightAttack
+    1 HeavyAttack
+    2 Defend
+    3 Dodge
+    4 Pursue
+    5 Disengage
+    6 UseAbility
+    7 GapCloserSkill
+    8 UnblockableAreaSkill
+  }
+  class "执行反馈\nExecutionOutcome" as Outcome {
+    Accepted 或拒绝原因
+    目标与执行时刻
+  }
+  class "奖励定义\nRewardDefinition" as RewardConfig {
+    适用运行环境
+    奖励版本或配置标识
+    各奖励项与权重
+  }
+  class "奖励事件\nRewardEvent" as Reward {
+    事件原因与发生时刻
+    事实量与奖励值
+  }
+}
+
+package "独立评估与结果" as Assessment {
+  class "评估任务\nEvaluationRun" as Evaluation {
+    用途：选模 / 独立测试 / UE 对照
+    运行环境与策略条件
+    种子、画像与实验配置
+  }
+  class "Episode 指标\nEpisodeMetrics" as Metrics {
+    胜负、时长或决策步数
+    伤害、动作分布与拒绝
+    UE 另记录回退、延迟与帧时间
+  }
+  class "评估报告\nEvaluationReport" as Report {
+    实验版本与样本范围
+    汇总及按画像拆分的指标
+    失败案例与结果限制
+  }
+}
+
+Training "0..*" --> "1" Config : 使用
+Config "0..*" --> "1" RewardConfig : 指定训练奖励
+Training "1" --> "0..*" Model : 生成检查点与最终模型
+Selection "0..*" --> "1..*" Model : 比较候选
+Selection "0..*" --> "1" Model : 选定
+Selection "0..*" --> "1..*" Report : 依据选模评估
+Deployment "0..*" --> "1" Model : 加载冻结参数
+
+Episode "0..*" --> "0..1" Deployment : UE/PPO 条件接入
+Episode "1" *-- "0..*" Observation : 采样
+Episode "1" *-- "0..*" Decision : 留存决策
+Decision "0..1" --> "1" Observation : 对应本次观测
+Decision "0..*" --> "0..1" Action : 可行动时建议
+Decision "1" *-- "0..1" Outcome : 执行后反馈
+Episode "0..*" --> "1" RewardConfig : 按运行环境计分
+Episode "1" *-- "0..*" Reward : 留存奖励事实
+Reward "0..*" --> "0..1" Decision : 可关联决策
+Episode "1" *-- "0..1" Metrics : 结束后汇总
+
+Evaluation "0..1" --> "0..*" Episode : 采集同用途样本
+Evaluation "0..*" --> "0..*" Model : PPO 条件引用
+Evaluation "1" --> "0..1" Report : 生成
+Report "0..*" --> "1..*" Metrics : 汇总结果
+
+legend bottom
+  本图表达概念与业务关系，不要求与 C++ / Python 实现类逐一对应。
+  训练任务更新策略参数；部署只进行冻结推理，无可用动作时可不产生动作与执行反馈。
+  模拟器规则基线与 UE 行为树基线分开建条件；部署故障时由 UE 策略接入切换 BT。
+  观测的动作可用性用于策略选择，执行端仍复核目标、状态、能力与 GAS 合法性。
+  Accepted 是能力启动反馈；伤害与奖励来自后续实际事件，不能据此认定命中或胜利。
+  组合表示 Episode 记录归属，归档不随运行对象销毁；奖励事件可先于首个有效决策。
+  选模与独立测试不得复用样本；模拟器与 UE 的奖励定义及评估报告分别记录。
+  UE 全流程、回退效果与正式对照报告待验收，图中关系不表示这些目标已经实现。
+endlegend
+@enduml

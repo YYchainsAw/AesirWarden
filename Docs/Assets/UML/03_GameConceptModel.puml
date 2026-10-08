@@ -1,0 +1,88 @@
+@startuml GameConceptModel
+' Diagram: SRS-G-02; Model: To-Be / conceptual requirements baseline 2026-10-08
+' Purpose: game domain concepts, responsibilities and multiplicities; not C++ inheritance
+' UE: develop ea4c8052f5df319c2d3b7b8c8dfcf2f684efb408
+' AI: main 1678dd6a467bc2fd9c077124ede527a82958e332
+' Evidence: GDD/01_GameFlow.md; GDD/02_CoreLoop.md; GDD/03_CombatDesign.md
+title AesirWarden — 游戏核心概念类图（需求目标）
+skinparam defaultFontName Microsoft YaHei
+skinparam backgroundColor #FAFAF7
+skinparam shadowing false
+skinparam nodesep 45
+skinparam ranksep 55
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+hide methods
+
+  class "关卡\nLevel" as Level {
+    起点
+    Boss 场地入口
+  }
+  class "本次游玩\nPlaythrough" as Run {
+    当前流程阶段
+    进入方式：开始 / 重试
+  }
+  class "Boss 遭遇\nBossEncounter" as Encounter {
+    episodeId
+    开始 / 终止状态
+  }
+  class "战斗结果\nCombatResult" as Result {
+    结局：胜利 / 失败
+    终局原因
+  }
+
+  abstract class "战斗角色\nCombatant" as Character {
+    生命值 / 最大生命值
+    死亡 / 忙碌 / 受击状态
+  }
+  class "玩家角色\nPlayerCharacter" as Player {
+    守防压力
+    当前锁定目标
+  }
+  class "Boss\nBossCharacter" as Boss
+  class "同伴角色\nCompanionCharacter" as Companion <<M5 target>> {
+    companionId
+  }
+  class "能力定义\nAbilityDefinition" as Ability {
+    能力标识
+    使用条件与冷却规则
+  }
+
+  class "Boss 决策策略\nBossPolicy" as Policy {
+    来源：BT / 冻结 PPO
+    契约与模型版本
+  }
+  class "战术指令\nTacticalOrder" as Order <<M5 target>> {
+    orderId
+    意图 / 目标 / 优先级
+    有效期
+  }
+  class "执行回执\nExecutionReceipt" as Receipt <<M5 target>> {
+    指令标识
+    执行结果与原因
+  }
+
+Character <|-- Player
+Character <|-- Boss
+Character <|-- Companion
+Run "0..*" --> "1" Level : 游玩
+Run "0..*" --> "1" Player : 控制
+Run "1" *-- "0..1" Encounter : 本次 Boss 遭遇
+Run "1" *-- "0..1" Result : 本次结局只结算一次
+Encounter "0..*" --> "1" Player : 对抗
+Encounter "0..*" --> "1" Boss : 指定通关目标
+Encounter "0..1" --> "0..1" Result : 如已开战则关联终局
+Encounter "0..*" --> "1" Policy : 采用当前决策来源
+Character "0..*" --> "0..*" Ability : 可用能力
+Run "0..*" --> "0..1" Companion : 可选协作
+Player "1" --> "0..*" Order : 下达
+Order "0..*" --> "1" Companion : 交给指定同伴
+Order "1" --> "0..*" Receipt : 收到阶段性执行反馈
+Order "0..*" --> "0..1" Ability : 施法类指令引用
+
+legend bottom
+  概念泛化表达业务共性，不声称对应 C++ 类继承。
+  组合只表示本次游玩的遭遇与结果归属，结束后记录可以归档保留。
+  NPC 人格、记忆、关系的服务内模型使用 AI Spec v1.1 独立图源。
+endlegend
+@enduml

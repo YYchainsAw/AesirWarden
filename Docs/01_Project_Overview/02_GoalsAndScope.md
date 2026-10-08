@@ -17,4 +17,4 @@
 
 ## 变更规则
 
-范围变化记录在本页及 [Changelog](../CHANGELOG.md)；影响架构且难以逆转的决定写入 [Decisions](../02_Design_Doc/TDD/Decisions/README.md)。功能状态只能由当前工程源码/资产及运行证据提升，参见[验证矩阵](../06_Test_Doc/VerificationMatrix.md)。
+范围变化记录在本页；影响架构且难以逆转的决定写入 [Decisions](../02_Design_Doc/TDD/Decisions/README.md)。功能状态只能由当前工程源码/资产及运行证据提升，参见[验证矩阵](../06_Test_Doc/01_VerificationMatrix.md)。

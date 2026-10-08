@@ -1,0 +1,78 @@
+@startuml 07_BossRLUseCases
+' Diagram: RL-UC-01; Model: To-Be / requirements baseline 2026-10-08
+' Purpose: independent Boss RL training, frozen deployment and evaluation goals
+' Engineering baseline: AesirWarden / aesir-ai-service; schema v4; protocol 1.0
+' UE: develop ea4c8052f5df319c2d3b7b8c8dfcf2f684efb408
+' AI: main 52388df5832e8910bd580fcdbb992796f8259cbd
+' Evidence UE: Docs/08_RL_Research/01_BossRLContract.md; 03_EvaluationProtocol.md
+' Evidence UE: Source/AesirWarden/Private/AI/Boss/AesirBossPolicyClientComponent.cpp
+' Evidence AI: scripts/rl/boss/train.py; rl/boss/inference_app.py; rl/boss/evaluation.py
+' Evidence AI: models/rl/boss/deployment/boss_policy_schema_v4_sim005.selection.json
+' Last verified: 2026-10-08; static source and artifact review; no new UE runtime evidence
+
+title AesirWarden — Boss RL 独立用例图（需求目标）
+left to right direction
+skinparam defaultFontName Microsoft YaHei
+skinparam backgroundColor #FAFAF7
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam nodesep 30
+skinparam ranksep 45
+
+actor "开发与研究人员" as Researcher
+actor "Boss 模拟环境\n状态推进与奖励" as Simulator
+actor "UE 战斗执行端\n观测、GAS 与 Episode" as Game
+
+rectangle "Boss RL 子系统\nPython 训练、推理、评估与 UE 策略接入" {
+  package "离线训练与选模" {
+    usecase "R-UC-01\n训练并选择候选策略" as TrainSelect
+    usecase "训练候选 MaskablePPO\n保存检查点、模型与训练清单" as Train
+    usecase "比较候选模型\n记录选模依据与选定产物" as Select
+    usecase "从检查点继续训练" as Resume
+  }
+  package "冻结部署与战斗接入" {
+    usecase "R-UC-02\n部署冻结策略并接入战斗" as Deploy
+    usecase "加载选定模型\n保持推理参数固定" as Load
+    usecase "获取 Boss 高层决策\n按观测与动作可用性选择" as Decide
+    usecase "记录失败并切换 BT 回退\n运行效果待验收" as Fallback
+  }
+  package "独立对照评估" {
+    usecase "R-UC-03\n执行独立对照评估" as Evaluate
+    usecase "确定并冻结实验条件\n划分选模与独立测试数据" as Conditions
+    usecase "执行分组对照\n模拟器与 UE 分别运行、记录" as Compare
+    usecase "汇总 Episode 与指标\n生成可追溯报告" as Report
+  }
+}
+
+Researcher --> TrainSelect
+Researcher --> Deploy
+Researcher --> Evaluate
+Researcher --> Resume
+
+Train --> Simulator
+Select --> Simulator
+Compare --> Simulator
+Decide --> Game
+Fallback --> Game
+Compare --> Game
+
+TrainSelect ..> Train : <<include>>
+TrainSelect ..> Select : <<include>>
+Resume ..> Train : <<extend>>\n[训练中断且存在检查点]
+Deploy ..> Load : <<include>>
+Deploy ..> Decide : <<include>>
+Fallback ..> Decide : <<extend>>\n[连续失败达到配置阈值]
+Evaluate ..> Conditions : <<include>>
+Evaluate ..> Compare : <<include>>
+Evaluate ..> Report : <<include>>
+
+legend bottom
+  R-UC-01～03 与整组用例总览及需求文档保持同一编号。
+  边界按职责划分：训练模拟环境和 UE 战斗执行端是外部协作方，UE 策略接入在子系统内。
+  玩家通过游戏用例参与战斗；Boss 不是外部参与者，NPC 服务不纳入正式主对照。
+  冻结 PPO 只输出高层动作建议；UE 复核并执行，Accepted 只表示能力启动。
+  无可用动作时返回 state_locked；Episode 结束后停止请求，不执行旧响应。
+  模拟器基线为 RuleBossPolicy，UE 基线为 BT_AesirBoss；选模数据不得作为独立测试数据。
+  模型与选模产物已存在；完整 UE Episode、故障回退和正式 BT–PPO 对照仍待验收。
+endlegend
+@enduml

@@ -4,7 +4,7 @@
 
 | ID | 决定 | 状态 |
 | --- | --- | --- |
-| [ADR-001](ADR-001-shared-boss-executor.md) | BT 与 RL 共用 Boss Action→GAS 执行边界 | Accepted（依据项目既定方向及当前源码） |
-| [ADR-002](ADR-002-rl-first-defense.md) | 答辩优先单 Boss RL 对照，同伴扩展延期 | Accepted（依据项目范围决定） |
+| [ADR-001](01_ADR001SharedBossExecutor.md) | BT 与 RL 共用 Boss Action→GAS 执行边界 | Accepted（依据项目既定方向及当前源码） |
+| [ADR-002](02_ADR002RLFirstDefense.md) | 答辩优先单 Boss RL 对照，同伴扩展延期 | Accepted（依据项目范围决定） |
 
 以上状态表示方向已明确，不表示实现或验收完成。
