@@ -6,4 +6,4 @@
 
 **公开仓库范围：**收录 C++、配置、文档，以及项目制作的 Blueprint、GAS、BT、输入、UI、AnimBP、Blend Space 和 Montage。第三方原始素材、包含外部动作数据的 Animation Sequence、模板地图及其外部 Actor 数据不在公开仓库中；克隆后不能直接运行完整 Boss 战。完整工程保留在本地或受限访问的存储中。
 
-从[项目文档](Docs/README.md)进入；优先阅读[范围与证据状态](Docs/01_Project_Overview/02_GoalsAndScope.md)、[Boss RL 研究计划](Docs/08_RL_Research/README.md)和 [Unreal Engine 5.8 工程](AesirWarden.uproject)。第三方动画与视觉素材的归属见[来源清单](Docs/01_Project_Overview/05_CreditsAndProvenance.md)。本项目目前不声称已取得独立 UE 比较结论。
+继续开发从[开发笔记](Docs/README.md)和[当前计划](Docs/05_Development_Guide/06_DevelopmentRoadmap.md)开始：先接通 BT 的完整游玩流程，再完善 RL Boss、玩家与 AI 队友。研究方法见 [Boss RL](Docs/08_RL_Research/README.md)，素材归属见[来源清单](Docs/01_Project_Overview/05_CreditsAndProvenance.md)。

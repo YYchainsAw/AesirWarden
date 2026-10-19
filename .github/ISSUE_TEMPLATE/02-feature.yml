@@ -12,7 +12,7 @@ body:
       优先级、模块和里程碑字段记录建议归属，创建后由维护者设置对应标签和里程碑。
       需要运行验收或实验数据时，按实际任务添加 `needs:runtime-verification` 或 `needs:experiment-evidence`。
 
-      [项目范围](https://github.com/YYchainsAw/AesirWarden/blob/main/Docs/01_Project_Overview/02_GoalsAndScope.md) · [已知问题](https://github.com/YYchainsAw/AesirWarden/blob/main/Docs/06_Test_Doc/KnownIssues.md) · [里程碑](https://github.com/YYchainsAw/AesirWarden/milestones)
+      [项目范围](https://github.com/YYchainsAw/AesirWarden/blob/main/Docs/01_Project_Overview/02_GoalsAndScope.md) · [已知问题](https://github.com/YYchainsAw/AesirWarden/blob/main/Docs/06_Test_Doc/02_KnownIssues.md) · [里程碑](https://github.com/YYchainsAw/AesirWarden/milestones)
 - type: textarea
   id: goal
   attributes:
@@ -73,11 +73,14 @@ body:
   id: milestone
   attributes:
     label: 建议里程碑
-    description: 后续范围可以不归属当前三个里程碑；实际归属由维护者设置。
+    description: 当前优先拆分 M1/M2；后期任务按实际安排归属 M3–M6，实际里程碑由维护者设置。
     options:
-    - M1 · P0 单 Boss 可运行闭环与 Windows 基线包
-    - M2 · P0 BT–PPO 可复现对照与研究证据
-    - M3 · P1 第一关完整表现与 Windows 演示交付
+    - M1 · 完整游玩流程与 BT Boss 基线
+    - M2 · Boss 系统完善与 RL 实战闭环
+    - M3 · RL 对照评估与复现证据
+    - M4 · 玩家数值、技能与手感
+    - M5 · AI 队友聊天与战斗联调
+    - M6 · 综合演示与交付
     - 后续 / 暂不归属
     - 待确认
   validations:

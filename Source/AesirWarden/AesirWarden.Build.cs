@@ -26,6 +26,8 @@ public class AesirWarden : ModuleRules
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
+			"LevelSequence",
+			"MovieScene",
 			"HTTP",
 			"Json",
 			"JsonUtilities"
