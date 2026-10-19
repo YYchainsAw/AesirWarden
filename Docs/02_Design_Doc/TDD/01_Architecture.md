@@ -6,11 +6,11 @@
 
 `玩家输入/战斗 → UE 战局状态 → Boss Observation → BT 或 PPO 高层 Action → 共享 Boss Action Component → GAS Ability/Effect → 动画/命中/伤害 → Telemetry → 下一次 Observation`。
 
-![AesirWarden 核心组件图](../../Assets/UML/04_SystemArchitecture.png)
+![AesirWarden 核心组件图（历史技术参考）](../../UML/Technical/04_SystemArchitecture.png)
 
-可编辑图源：[04_SystemArchitecture.puml](../../Assets/UML/04_SystemArchitecture.puml)、[06_BossDecisionSequence.puml](../../Assets/UML/06_BossDecisionSequence.puml)。
+交互预览：[Boss共享执行时序（历史技术参考）](../../UML/Technical/06_BossDecisionSequence.png)。当前需求故障语义见[Boss回退分析时序](../../UML/png/09_BossFallbackSequence.drawio.png)，对象职责见[课程对象分析](../../09_Course_Analysis/01_RetryObjectAnalysis.md)。
 
-UE 是目标、状态、能力合法性与伤害结算的权威方。本机 Python Boss 服务仅返回高层动作建议（默认 `127.0.0.1:8012`）；同伴命令服务（默认 `8011`）是独立的后续扩展路径。任何服务响应都不能绕过 UE 的共享执行器。当前依赖见 [Build.cs](../../../Source/AesirWarden/AesirWarden.Build.cs)，协议和动作见[Boss RL 契约](../../08_RL_Research/01_BossRLContract.md)。
+UE 负责目标、状态、能力合法性与伤害结算。Python Boss 服务返回高层动作建议，同伴服务负责聊天与命令建议；实际战斗都由 UE 执行。依赖见 [Build.cs](../../../Source/AesirWarden/AesirWarden.Build.cs)，连接配置见[工程速查](../../05_Development_Guide/01_ProjectQuickReference.md)，协议和动作见[Boss RL 契约](../../08_RL_Research/01_BossRLContract.md)。
 
 ## 模块职责
 
@@ -20,11 +20,11 @@ UE 是目标、状态、能力合法性与伤害结算的权威方。本机 Pyth
 | Boss 决策 | `AI/Boss`、`Content/Aesir/AI/Boss` | Observation、BT/PPO 请求、回退、动作结果 |
 | 共享执行 | `UAesirBossActionComponent`、GAS Ability/Effect | 统一合法性判断与实际能力激活 |
 | 战局与呈现 | `Framework`、`Content/Aesir/UI` | 胜负事件、HUD/结果 Widget |
-| 同伴服务 | `Services/Companion`、`AI/Companion` | 文本/语音命令和订单校验；真实 GAS 闭环延期 |
+| 同伴服务 | `Services/Companion`、`AI/Companion` | 聊天/命令接入和订单校验；实际战斗执行与回执按 M5 接通 |
 
 ## 设计约束
 
-- Observation v4 为 26 维，Action 枚举为 9 类；两端顺序和值变化要升版本并重训。
+- Observation、Action 的版本、顺序和值由 [RL 契约](../../08_RL_Research/01_BossRLContract.md)维护；修改时同步两端并检查模型是否需要重训。
 - BT 与 PPO 共享 GAS 执行、能力配置、遭遇规则和遥测口径；模拟器 `RuleBossPolicy` 不能当 UE BT。
 - 一次服务错误、连续失败、超时、错误 Schema 与非法动作必须可区分记录；当前回退代码仍有待修复问题，见[KnownIssues](../../06_Test_Doc/02_KnownIssues.md)。
-- 本目录的 [PlantUML 源](../../Assets/UML/README.md)是图的唯一可编辑版本；Markdown 说明职责与证据，不复制第二份图源。
+- 图预览集中在 [UML](../../UML/)，正文保存职责与边界；工程和实验的当前状态以实际验证记录为准。

@@ -1,14 +1,14 @@
 # 已知问题与限制
 
-> 状态：2026-09-29 静态核对；下表是待处理项，不代表已在新工程运行复现。
+> 2026-10-18静态核对。以下是源码发现或交付限制，未在本次运行复现；尚未执行的目标检查见[开发检查清单](01_VerificationMatrix.md)，业务未决项见[课程基线](../09_Course_Analysis/README.md)。
 
-| ID | 问题/限制 | 当前依据 | 关闭条件 |
+| ID | 问题 / 限制 | 状态与依据 | 处理和复测 |
 | --- | --- | --- | --- |
-| KI-01 | Policy Client 在检查 `action_id` 前调用 `ResetFailures()`；连续缺失/越界动作可能每次重新从 1 计数，达不到阈值 | [源码](../../Source/AesirWarden/Private/AI/Boss/AesirBossPolicyClientComponent.cpp) | 调整逻辑后对两类错误连续注入，确认 BT 接管和 Episode 可结算 |
-| KI-02 | GameMode 仅在 BeginPlay 枚举当时存在的敌人；动态生成 Boss 可能不计入胜利判定 | [源码](../../Source/AesirWarden/Private/Framework/AesirCombatPrototypeGameMode.cpp) | 固定场景限制写明，或实现动态登记并运行测试 |
-| KI-03 | PPO 完整 UE Episode、同条件 BT 对照和 Windows 性能尚无本轮证据 | [验证矩阵](01_VerificationMatrix.md) | 完成预定实验，保留原始遥测/配置/统计报告 |
-| KI-04 | 结果 Widget 资产存在，但显示、重试、返回与重复委托清理未核验 | [WBP_CombatResult](../../Content/Aesir/UI/Results/WBP_CombatResult.uasset) | PIE 与打包流程连续通过并记录 Episode ID |
-| KI-05 | 默认地图指向本地 `/Game/Aesir/Maps/L_OpenWorld`，但地图及其第三方依赖不进入公开仓库；公开克隆不能直接运行 | [DefaultEngine.ini](../../Config/DefaultEngine.ini)及公开资产排除规则 | 在 README/环境指南说明恢复方式；可运行版本另行做 Windows 包验证 |
-| KI-06 | 公开仓库只保存代码、文档和经筛选的项目蓝图，完整工程与实验数据仍需独立备份和版本关联 | `.gitignore`、`.gitattributes`、[证据登记](../08_RL_Research/04_EvidenceRegister.md) | 每次实验记录代码提交、资产快照和模型/遥测版本 |
+| KI-01 | Policy Client在检查action_id前ResetFailures，连续缺失/越界动作可能每次重新从1计数，达不到阈值 | 待修复，静态发现：[PolicyClient](../../Source/AesirWarden/Private/AI/Boss/AesirBossPolicyClientComponent.cpp) | 对齐BR-RL-03；完成RL-FAULT-01a..e，验证完整合法响应才清零、三连错切BT |
+| KI-02 | GameMode只在BeginPlay枚举敌人，动态Boss可能漏计，普通敌人可能影响胜利条件 | 胜利判定待收口：[GameMode](../../Source/AesirWarden/Private/Framework/AesirCombatPrototypeGameMode.cpp) | 明确目标Boss登记，复测MATCH-01及01a/b，覆盖实际生成方式 |
+| KI-05 | 默认地图/Game/Aesir/Maps/L_OpenWorld及第三方依赖未完整进入公开仓库，公开克隆不能直接运行 | 已知交付限制：[DefaultEngine.ini](../../Config/DefaultEngine.ini)、[.gitignore](../../.gitignore) | 按[工程速查](../05_Development_Guide/01_ProjectQuickReference.md)恢复资产，BUILD-01另验实际包 |
+| KI-06 | EndBossEpisode只结束遥测，不停PolicyClient；后续决策在无活动Episode时会自动新建段，结束记录不等于结束推理 | 静态生命周期风险，需核对Blueprint流程接线：[BossAIController](../../Source/AesirWarden/Private/AI/Boss/AesirBossAIController.cpp) | 对齐BR-RL-02，终局/返回/恢复取消请求并失效身份；MATCH-01b、C-08b、RL-FAULT-01f及RL-EPISODE-01复测 |
 
-将来发现的问题先给复现步骤、影响版本、严重度和负责人；修复后关联测试证据，不仅删除行。
+完整工程、第三方资产和原始实验数据独立备份，正式构建/实验记录代码提交、资产快照与模型版本。NPC阶段回执、语音上下文和服务模型校验等尚未闭环的目标及协议差异分别保留在[NPC交界](../02_Design_Doc/TDD/05_NetworkNote.md)和[RL契约](../08_RL_Research/01_BossRLContract.md)，不把所有未开发目标登记成已复现Bug。
+
+新增问题写现象、最短复现步骤和影响范围；修复后保留解决日期及实际复测结果。任何本次文档修订都不将以上状态改为“已通过”。

@@ -1,6 +1,6 @@
 # 项目简介
 
-> 状态：静态核对 + 目标说明 · 2026-09-29
+> 目标基线：2026-10-07；实现状态依据 2026-09-29 至 10-07 的记录，运行验收见验证矩阵。
 
 ## 一句话概括
 
@@ -8,12 +8,22 @@
 
 ## 可玩目标与范围
 
-目标为 Windows 上约 10–15 分钟的稳定垂直切片：在第一关营火场景进入主菜单，运镜后游玩关卡前段，抵达 Boss 场地观看入场动画，完成胜负、结尾与结果页；失败后从关卡开头重试。主菜单与过场在核心 Boss 实验稳定后接入；检查点、普通敌人遭遇与语音战术同伴不阻塞答辩。当前工程已有玩家战斗、Boss BT/GAS、Observation、Policy Client、Telemetry 的代码或资产；完整 PPO 对照、打包流程与体验仍需验证。具体玩家路径见[第一关流程](../02_Design_Doc/GDD/01_GameFlow.md)，逐项状态见[范围表](02_GoalsAndScope.md)。
+当前先完成 **BT Boss 的完整游玩流程**，随后以 RL Boss 为重点推进玩家数值、技能和手感，以及 AI 队友的聊天与战斗接入，最后整合 Windows 演示。具体顺序以 [开发路线](../05_Development_Guide/06_DevelopmentRoadmap.md)为准，交付边界见[目标与范围](02_GoalsAndScope.md)。
+
+可玩目标为约 10–15 分钟的垂直切片，玩家路径、菜单、镜头、结算与重试规则集中在[第一关流程](../02_Design_Doc/GDD/01_GameFlow.md)。2026-10-07 记录中，玩家基础移动、攻击、翻滚及 BT Boss 战斗已由本人确认可用；完整流程、PPO 联调和打包验收仍有待办，具体状态见路线与[验证矩阵](../06_Test_Doc/01_VerificationMatrix.md)。
 
 ## 技术与个人工作
 
 - Unreal Engine 5.8、C++、Blueprint、Gameplay Ability System、Behavior Tree、Enhanced Input、Motion Warping；工程模块为 `AesirWarden`，依据 [uproject](../../AesirWarden.uproject) 与 [Build.cs](../../Source/AesirWarden/AesirWarden.Build.cs)。
-- Boss 推理接口使用独立本机 Python 服务（默认 `127.0.0.1:8012`）；同伴命令服务使用另一路本机服务（默认 `8011`），本轮不作为 Boss 必需链路。
+- Boss 推理接口与同伴命令接口使用独立本机 Python 服务，连接位置见[工程速查](../05_Development_Guide/01_ProjectQuickReference.md)。
 - 个人贡献应以可核验的 C++/Blueprint、AI 架构、动画整合、镜头交互、实验配置和结果为准；外部资产来源单独列明。
 
-题材细节、发布版本号及完整开发周期尚未定稿，不在此页臆造。面向 GDAT 的完整扩展目标见[范围表](02_GoalsAndScope.md)。
+UE 部分由本人独立开发；Python Boss RL 也由本人负责，Python NPC 服务由队友负责。接口协作仍需保留，文档主要供自己开发回查、服务联调及答辩/作品集展示使用。
+
+## 展示重点
+
+- 玩家体验：清楚的攻击预兆、守防与闪避选择，以及稳定的胜负反馈，见[战斗设计](../02_Design_Doc/GDD/03_CombatDesign.md)。
+- 答辩研究：相同执行规则下的 BT–PPO 对照、实验可复现性和适用边界，见[RL 研究](../08_RL_Research/README.md)。
+- 作品集：系统设计、Unreal 工程、AI、动画整合和个人贡献，见[架构](../02_Design_Doc/TDD/01_Architecture.md)及[贡献与来源](05_CreditsAndProvenance.md)。
+
+题材细节、发布版本号与开发周期尚未定稿；玩家访谈和可用性研究尚无已记录结果。

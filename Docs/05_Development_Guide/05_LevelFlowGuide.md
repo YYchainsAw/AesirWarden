@@ -14,10 +14,10 @@
 
 ## 编译与蓝图父类
 
-1. 保存并关闭 UE，编译 `AesirWardenEditor Win64 Development`，再启动项目。本轮新增原生枚举和反射属性，应按 [CompileGuide](02_CompileGuide.md) 完整构建并重启。
+1. 保存并关闭 UE，编译 `AesirWardenEditor Win64 Development`，再启动项目。原生枚举和反射属性变更后，按[工程速查](01_ProjectQuickReference.md#编译与迭代)完整构建并重启。
 2. 打开 `/Game/Aesir/Framework/Flow/BP_AesirLevelFlowDirector`，通过 `File → Reparent Blueprint` 选择原生 `AesirLevelFlowDirector`。
 3. 若已制作先前的蓝图流程，移除旧的 BeginPlay 初始化、相机/输入切换、定时器，以及同名 `EnterMainMenu`、`RequestStartGame`、`EnterExploration` 自定义事件。改用继承的 C++ 函数，避免两套流程同时执行。
-4. 若存在与继承属性同名的蓝图变量，把引用改接继承属性后移除旧变量。流程状态采用原生 `EAesirLevelFlowState`；旧 `/Game/Aesir/Framework/Flow/E_AesirLevelFlowState` 不参与新代码，不在本次操作中自动删除。
+4. 若存在与继承属性同名的蓝图变量，把引用改接继承属性后移除旧变量。流程状态采用原生 `EAesirLevelFlowState`；旧 `/Game/Aesir/Framework/Flow/E_AesirLevelFlowState` 不参与当前代码，清理前检查是否仍有资产引用。
 
 ## 场景配置
 
@@ -84,7 +84,7 @@ Sequence 的角色绑定、起身动画、最终位置/朝向、动画模式恢�
 
 ## 验收
 
-2026-09-30 已完成 UE 5.8 `AesirWardenEditor Win64 Development` 编译与 DLL 链接，结果 `Succeeded`；反射生成代码包含原生流程枚举、三个入口和蓝图表现事件。源码/设计文档的定向 `git diff --check` 通过，本页 5 个本地链接存在。蓝图尚未自动改父类、配置或接线，因此没有宣称运行流程已通过。
+2026-09-30 的构建记录：UE 5.8 `AesirWardenEditor Win64 Development` 编译与 DLL 链接结果为 `Succeeded`，反射生成代码包含流程枚举、三个入口和蓝图表现事件。蓝图父类、场景配置、按钮接线和实际游玩流程仍待编辑器检查。
 
 以下均为待运行的检查，不代表已通过：
 

@@ -2,9 +2,7 @@
 
 > 状态：部分源码/资产核对 · 2026-09-29
 
-![AesirWarden GAS 架构图](../../Assets/UML/05_GasArchitecture.png)
-
-可编辑图源：[05_GasArchitecture.puml](../../Assets/UML/05_GasArchitecture.puml)。
+![AesirWarden GAS 架构图（历史技术参考）](../../UML/Technical/05_GasArchitecture.png)
 
 ## 当前组成
 
@@ -22,4 +20,4 @@
 
 行动被拒绝时返回 `InvalidAvatar`、`InvalidTarget`、`NotAuthority`、`Dead`、`Stunned`、`Busy`、`MissingAbilitySystem`、`NotConfigured`、`AbilityNotGranted` 或 `BlockedByGAS`。Accepted 表示 GA 成功激活，**不等于命中或最终完成**；实验统计应分开记录。
 
-玩家固有盾防不随未来武器切换而删除。永久属性等级与符文归存档，运行时值通过可调曲线/GE 写入 GAS；曲线、装备授权和完整进度系统目前属于目标设计。[符文设计](../GDD/05_MagicSystem.md)。
+基础 Guard 与未来装备授予的能力分别管理。若采用永久成长，持久等级/装备定义与运行时 GAS 值分开，通过最终选定的曲线/GE 转换。具体技能、装备授权和进度方案见[玩家技能与成长设计](../GDD/05_MagicSystem.md)。
