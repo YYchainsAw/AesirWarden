@@ -1,6 +1,7 @@
 // Copyright (c) 2026 YYchainsAw. All rights reserved.
 
 #include "Framework/Flow/AesirCampfireStart.h"
+#include "Framework/Flow/AesirOpeningCameraComponent.h"
 
 #include "AesirWarden.h"
 #include "Animation/AnimInstance.h"
@@ -21,6 +22,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "LevelSequenceActor.h"
 #include "UObject/ConstructorHelpers.h"
 
 AAesirCampfireStart::AAesirCampfireStart()
@@ -40,6 +42,7 @@ AAesirCampfireStart::AAesirCampfireStart()
 	MenuCameraChild->SetChildActorClass(ACameraActor::StaticClass());
 	MenuCameraChild->SetRelativeLocation(FVector(-480.0f, -300.0f, 190.0f));
 	MenuCameraChild->SetRelativeRotation(FRotator(-12.0f, 32.0f, 0.0f));
+	OpeningCamera = CreateDefaultSubobject<UAesirOpeningCameraComponent>(TEXT("OpeningCamera"));
 
 	Firewood = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Firewood"));
 	Firewood->SetupAttachment(CampfireRoot);
@@ -179,6 +182,8 @@ void AAesirCampfireStart::OnConstruction(const FTransform& Transform)
 
 void AAesirCampfireStart::BeginPlay()
 {
+	OpeningCamera->OnTransitionFinished.AddUObject(this, &AAesirCampfireStart::HandleOpeningCameraFinished);
+	OpeningCamera->OnTransitionFailed.AddUObject(this, &AAesirCampfireStart::HandleOpeningCameraFailed);
 	RefreshMenuCamera();
 	Super::BeginPlay();
 	SetActorTickEnabled(bAnimateFirelight && IsValid(Firelight));
@@ -199,6 +204,8 @@ void AAesirCampfireStart::Tick(float DeltaSeconds)
 void AAesirCampfireStart::PrepareMainMenuPresentation()
 {
 	ClearPlayerPresentation();
+	bSynchronizedOpening = false;
+	bSynchronizedCameraCompleted = false;
 	if (!bUsePlayerSitAnimations)
 	{
 		return;
@@ -257,15 +264,26 @@ UAnimMontage* AAesirCampfireStart::PlayPlayerPresentationAnimation(
 
 bool AAesirCampfireStart::BeginOpeningPresentation()
 {
+	const bool bRequireSafeCamera = bUsePlayerSitAnimations && Cast<ACharacter>(PlayerPawnRef.Get()) &&
+		OpeningCamera && OpeningCamera->bEnabled && !IsValid(OpeningSequenceActor);
 	UAnimInstance* AnimInstance = PresentationAnimInstance.Get();
 	USkeletalMeshComponent* Mesh = PresentationMesh.Get();
 	if (!bUsePlayerSitAnimations || !MenuLoopMontage || !AnimInstance || !Mesh ||
 		Mesh->GetAnimInstance() != AnimInstance || Mesh->GetOwner() != PlayerPawnRef)
 	{
+		if (bRequireSafeCamera)
+		{
+			AbortSynchronizedOpening(TEXT("the player presentation mesh or sit montage is unavailable"));
+		}
 		return false;
 	}
 	if (!LoadedStandUpAnimation)
 	{
+		if (bRequireSafeCamera)
+		{
+			AbortSynchronizedOpening(TEXT("Stand Up Animation is missing"));
+			return false;
+		}
 		UE_LOG(LogAesirWarden, Warning, TEXT("Campfire: Stand Up Animation is missing; restoring locomotion before the camera handoff."));
 		return false;
 	}
@@ -273,12 +291,24 @@ bool AAesirCampfireStart::BeginOpeningPresentation()
 	StandUpMontage = PlayPlayerPresentationAnimation(LoadedStandUpAnimation, PlayRate, SitBlendTime);
 	if (!StandUpMontage)
 	{
+		if (bRequireSafeCamera)
+		{
+			AbortSynchronizedOpening(TEXT("Stand Up Animation could not play on the player's skeleton/slot"));
+		}
 		return false;
 	}
 	bWaitingForStandUpAnimation = true;
+	bSynchronizedOpening = OpeningCamera && OpeningCamera->bEnabled && !IsValid(OpeningSequenceActor);
+	bSynchronizedCameraCompleted = false;
 	FOnMontageEnded Finished;
 	Finished.BindUObject(this, &AAesirCampfireStart::HandleStandUpEnded);
 	AnimInstance->Montage_SetEndDelegate(Finished, StandUpMontage);
+	if (bSynchronizedOpening && !OpeningCamera->BeginTransition(PlayerControllerRef.Get(),
+		Cast<ACharacter>(PlayerPawnRef.Get()), AnimInstance, StandUpMontage))
+	{
+		AbortSynchronizedOpening();
+		return false;
+	}
 
 	// This is a recovery watchdog, not the normal animation completion signal.
 	const float EffectiveRate = PlayRate * FMath::Max(LoadedStandUpAnimation->RateScale, 0.01f);
@@ -298,11 +328,23 @@ void AAesirCampfireStart::HandleStandUpEnded(UAnimMontage* Montage, bool bInterr
 	}
 	if (bInterrupted)
 	{
+		if (bSynchronizedOpening)
+		{
+			AbortSynchronizedOpening();
+			return;
+		}
 		UE_LOG(LogAesirWarden, Warning, TEXT("Campfire: stand-up montage was interrupted; restoring locomotion and completing the opening."));
 	}
 	else
 	{
 		UE_LOG(LogAesirWarden, Display, TEXT("Campfire: stand-up animation completed."));
+	}
+	if (bSynchronizedOpening)
+	{
+		bWaitingForStandUpAnimation = false;
+		GetWorldTimerManager().ClearTimer(StandUpMonitorTimer);
+		OpeningCamera->NotifyAnimationFinished(false);
+		return;
 	}
 	CompleteOpeningPresentation();
 }
@@ -319,7 +361,12 @@ void AAesirCampfireStart::MonitorStandUp()
 		!IsValid(PlayerControllerRef) || PlayerControllerRef->GetPawn() != Mesh->GetOwner() ||
 		GetWorld()->GetTimeSeconds() > StandUpDeadline)
 	{
-		UE_LOG(LogAesirWarden, Warning, TEXT("Campfire: stand-up lost its player/AnimInstance or timed out; restoring gameplay safely."));
+		UE_LOG(LogAesirWarden, Warning, TEXT("Campfire: stand-up lost its player/AnimInstance or timed out; recovering the opening state."));
+		if (bSynchronizedOpening)
+		{
+			AbortSynchronizedOpening();
+			return;
+		}
 		CompleteOpeningPresentation();
 	}
 }
@@ -329,8 +376,66 @@ void AAesirCampfireStart::FinishOpeningPresentation(bool bSkipped)
 	ClearPlayerPresentation();
 }
 
+bool AAesirCampfireStart::TrySkipOpeningPresentation()
+{
+	if (!bSynchronizedOpening || !OpeningCamera || !OpeningCamera->IsTransitionActive())
+	{
+		return false;
+	}
+	if (UAnimInstance* Anim = PresentationAnimInstance.Get(); Anim && StandUpMontage)
+	{
+		FOnMontageEnded Empty;
+		Anim->Montage_SetEndDelegate(Empty, StandUpMontage);
+		Anim->Montage_Stop(0.0f, StandUpMontage);
+	}
+	bWaitingForStandUpAnimation = false;
+	GetWorldTimerManager().ClearTimer(StandUpMonitorTimer);
+	OpeningCamera->RequestFinishTransition();
+	return true;
+}
+
+bool AAesirCampfireStart::IsGameplayCameraReady() const
+{
+	return !bSynchronizedOpening || bSynchronizedCameraCompleted;
+}
+
+float AAesirCampfireStart::GetGameplayCameraBlendTime() const
+{
+	return bSynchronizedOpening && bSynchronizedCameraCompleted ? 0.0f : Super::GetGameplayCameraBlendTime();
+}
+
+void AAesirCampfireStart::HandleOpeningCameraFinished()
+{
+	if (bSynchronizedOpening && IsOpeningPresentationPending())
+	{
+		bSynchronizedCameraCompleted = true;
+		CompleteOpeningPresentation();
+	}
+}
+
+void AAesirCampfireStart::HandleOpeningCameraFailed()
+{
+	if (bSynchronizedOpening && IsOpeningPresentationPending())
+	{
+		AbortSynchronizedOpening();
+	}
+}
+
+void AAesirCampfireStart::AbortSynchronizedOpening(const FString& Reason)
+{
+	const FString Failure = Reason.IsEmpty() ? (OpeningCamera ? OpeningCamera->GetLastFailure()
+		: TEXT("camera component unavailable")) : Reason;
+	UE_LOG(LogAesirWarden, Warning, TEXT("Campfire: synchronized camera aborted: %s"),
+		*Failure);
+	AbortOpeningPresentation(NSLOCTEXT("AesirMenu", "OpeningCameraBlocked", "开场演出暂时无法开始，请重试"));
+}
+
 void AAesirCampfireStart::ClearPlayerPresentation()
 {
+	if (OpeningCamera)
+	{
+		OpeningCamera->CancelTransition(false);
+	}
 	bWaitingForStandUpAnimation = false;
 	GetWorldTimerManager().ClearTimer(StandUpMonitorTimer);
 	if (UAnimInstance* AnimInstance = PresentationAnimInstance.Get())

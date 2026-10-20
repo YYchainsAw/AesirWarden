@@ -16,6 +16,7 @@ class UAnimInstance;
 class UAnimMontage;
 class UAnimSequence;
 class USkeletalMeshComponent;
+class UAesirOpeningCameraComponent;
 
 /** Place one at the campfire center. Camera, menu flow and editable campfire dressing travel together. */
 UCLASS(Blueprintable)
@@ -37,6 +38,10 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Campfire|Components")
 	TObjectPtr<UChildActorComponent> MenuCameraChild;
+
+	/** Animated, collision-checked camera handoff. Expand this component in BP Details to tune it. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Campfire|Components")
+	TObjectPtr<UAesirOpeningCameraComponent> OpeningCamera;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Campfire|Components")
 	TObjectPtr<UInstancedStaticMeshComponent> Firewood;
@@ -90,6 +95,9 @@ protected:
 	virtual void PrepareMainMenuPresentation() override;
 	virtual bool BeginOpeningPresentation() override;
 	virtual void FinishOpeningPresentation(bool bSkipped) override;
+	virtual bool TrySkipOpeningPresentation() override;
+	virtual bool IsGameplayCameraReady() const override;
+	virtual float GetGameplayCameraBlendTime() const override;
 
 private:
 	void RefreshMenuCamera();
@@ -98,6 +106,9 @@ private:
 	void HandleStandUpEnded(UAnimMontage* Montage, bool bInterrupted);
 	void MonitorStandUp();
 	void ClearPlayerPresentation();
+	void HandleOpeningCameraFinished();
+	void HandleOpeningCameraFailed();
+	void AbortSynchronizedOpening(const FString& Reason = FString());
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimMontage> MenuLoopMontage;
@@ -114,4 +125,6 @@ private:
 	double StandUpDeadline = 0.0;
 	uint8 SavedRootMotionMode = 0;
 	uint8 SavedVisibilityTickOption = 0;
+	bool bSynchronizedOpening = false;
+	bool bSynchronizedCameraCompleted = false;
 };

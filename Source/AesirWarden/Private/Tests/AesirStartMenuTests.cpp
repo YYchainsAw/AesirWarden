@@ -10,6 +10,8 @@
 #include "Blueprint/WidgetTree.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Components/BoxComponent.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
 #include "Components/ChildActorComponent.h"
@@ -24,10 +26,12 @@
 #include "EngineUtils.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/Flow/AesirCampfireStart.h"
+#include "Framework/Flow/AesirOpeningCameraComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "Misc/ScopeExit.h"
 #include "Slate/SceneViewport.h"
 #include "UI/AesirMainMenuWidget.h"
@@ -131,6 +135,32 @@ public:
 		{
 			Anim->DispatchQueuedAnimEvents();
 		}
+	}
+
+	ACharacter* CreateCameraCharacter(FAutomationTestBase* Test)
+	{
+		ACharacter* Character = CreateAnimatedCharacter(Test);
+		if (!Character)
+		{
+			return nullptr;
+		}
+		// The real mesh/AnimBP is paired with the same 400 cm SpringArm camera
+		// arrangement as the player, without unrelated GAS/AI initialization.
+		USpringArmComponent* Arm = NewObject<USpringArmComponent>(Character, TEXT("TestCameraBoom"));
+		Character->AddInstanceComponent(Arm);
+		Arm->SetupAttachment(Character->GetRootComponent());
+		Arm->TargetArmLength = 400.0f;
+		Arm->bUsePawnControlRotation = true;
+		Arm->bDoCollisionTest = false; // The transition itself owns path collision tests.
+		Arm->RegisterComponent();
+		UCameraComponent* Camera = NewObject<UCameraComponent>(Character, TEXT("TestFollowCamera"));
+		Character->AddInstanceComponent(Camera);
+		Camera->SetupAttachment(Arm, USpringArmComponent::SocketName);
+		Camera->RegisterComponent();
+		Camera->Activate(true);
+		Character->DispatchBeginPlay();
+		Arm->TickComponent(0.1f, LEVELTICK_All, &Arm->PrimaryComponentTick);
+		return Character;
 	}
 
 	UGameInstance* GameInstance = nullptr;
@@ -396,6 +426,142 @@ private:
 	TWeakObjectPtr<UAnimMontage> StandUpMontage;
 	int32 Stage = 0;
 	int32 Frames = 0;
+};
+
+class FExerciseOpeningCamera final : public IAutomationLatentCommand
+{
+public:
+	FExerciseOpeningCamera(FAutomationTestBase* InTest, TSharedPtr<FMenuWorld> InFixture,
+		AAesirCampfireStart* InDirector, ACharacter* InCharacter, const FString& InMode)
+		: Test(InTest), Fixture(MoveTemp(InFixture)), Director(InDirector), Character(InCharacter), Mode(InMode)
+	{
+	}
+
+	virtual bool Update() override
+	{
+		Fixture->AdvanceAnimation(Character->GetMesh(), 0.05f);
+		if (++Frames > 320)
+		{
+			Test->AddError(TEXT("The synchronized opening camera did not finish within 320 ticks."));
+			return true;
+		}
+		UAesirOpeningCameraComponent* OpeningCamera = Director->OpeningCamera;
+		if (!bStarted)
+		{
+			if (Director->GetFlowState() != EAesirLevelFlowState::MainMenu)
+			{
+				return false;
+			}
+			if (Fixture->Controller->PlayerCameraManager)
+			{
+				Fixture->Controller->PlayerCameraManager->UpdateCamera(0.05f);
+			}
+			if (Mode == TEXT("Blocked"))
+			{
+				// A fully enclosed source/target cannot satisfy the path constraint.
+				// Rejection must leave the existing menu and its input/AI gate intact.
+				AActor* Obstacle = Fixture->World->SpawnActor<AActor>();
+				UBoxComponent* Blocker = NewObject<UBoxComponent>(Obstacle);
+				Obstacle->AddInstanceComponent(Blocker);
+				Obstacle->SetRootComponent(Blocker);
+				Blocker->SetBoxExtent(FVector(2000.0f));
+				Blocker->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+				Blocker->SetCollisionResponseToAllChannels(ECR_Block);
+				Blocker->RegisterComponent();
+				Test->TestFalse(TEXT("Start rejects a camera route enclosed by blocking geometry"), Director->RequestStartGame());
+				Test->TestEqual(TEXT("A rejected camera route restores MainMenu"), Director->GetFlowState(), EAesirLevelFlowState::MainMenu);
+				Test->TestFalse(TEXT("A rejected route leaves no active transition"), OpeningCamera->IsTransitionActive());
+				Test->TestFalse(TEXT("A rejected route does not report camera completion"), OpeningCamera->WasTransitionCompleted());
+				Test->TestTrue(TEXT("A rejected route keeps gameplay input blocked"), Fixture->Viewport->IgnoreInput());
+				Test->TestTrue(TEXT("The rejected route provides a useful failure reason"), !OpeningCamera->GetLastFailure().IsEmpty());
+				UAesirMainMenuWidget* Menu = ReadObjectProperty<UAesirMainMenuWidget>(Director, TEXT("MainMenuRef"));
+				Test->TestTrue(TEXT("A rejected route keeps the menu available"), Menu && Menu->IsInViewport());
+				return true;
+			}
+			if (!Test->TestTrue(TEXT("Start accepts a clear orbit camera path"), Director->RequestStartGame()))
+			{
+				return true;
+			}
+			Test->TestTrue(TEXT("The transition camera starts in the same call as stand-up"), OpeningCamera->IsTransitionActive());
+			Test->TestTrue(TEXT("The real stand-up gate is active with the camera"), IsWaitingForStandUp(Director));
+			ACameraActor* Camera = OpeningCamera->GetTransitionCamera();
+			if (!Test->TestNotNull(TEXT("The opening owns a temporary camera"), Camera))
+			{
+				return true;
+			}
+			Test->TestEqual(TEXT("The opening immediately uses its temporary view target"), Fixture->Controller->GetViewTarget(), static_cast<AActor*>(Camera));
+			StartLocation = Camera->GetActorLocation();
+			StandUpMontage = ReadObjectProperty<UAnimMontage>(Director, TEXT("StandUpMontage"));
+			bStarted = true;
+			if (Mode == TEXT("Destroy"))
+			{
+				TWeakObjectPtr<ACameraActor> OwnedCamera(Camera);
+				Director->Destroy();
+				Test->TestFalse(TEXT("Destroy removes the temporary opening camera"), OwnedCamera.IsValid());
+				Test->TestEqual(TEXT("Destroy returns the view to the possessed player"), Fixture->Controller->GetViewTarget(), static_cast<AActor*>(Character));
+				Test->TestFalse(TEXT("Destroy releases its gameplay input block"), Fixture->Viewport->IgnoreInput());
+				return true;
+			}
+			if (Mode == TEXT("Skip"))
+			{
+				Test->TestTrue(TEXT("Skip accepts an active simultaneous opening"), Director->SkipOpeningCinematic());
+			}
+			return false;
+		}
+
+		if (ACameraActor* Camera = OpeningCamera->GetTransitionCamera())
+		{
+			MaxTravel = FMath::Max(MaxTravel, FVector::Distance(StartLocation, Camera->GetActorLocation()));
+		}
+		if (OpeningCamera->IsTransitionActive())
+		{
+			Test->TestTrue(TEXT("Every observed camera sample preserves the configured player clearance"),
+				OpeningCamera->GetMinimumObservedClearance() + 0.1f >= OpeningCamera->MinPlayerClearance);
+			Test->TestTrue(TEXT("The transition holds gameplay input until its safe endpoint"), Fixture->Viewport->IgnoreInput());
+		}
+		UAnimInstance* Anim = Character->GetMesh()->GetAnimInstance();
+		const FAnimMontageInstance* Instance = Anim && StandUpMontage.IsValid() ? Anim->GetInstanceForMontage(StandUpMontage.Get()) : nullptr;
+		const bool bAnimationFinished = !Instance || (Instance->IsStopped() && Instance->GetBlend().IsComplete());
+		if (bAnimationFinished && AnimationFinishedFrame == INDEX_NONE)
+		{
+			AnimationFinishedFrame = Frames;
+		}
+		if (Director->GetFlowState() != EAesirLevelFlowState::Exploration)
+		{
+			if (AnimationFinishedFrame != INDEX_NONE && Frames - AnimationFinishedFrame > 2)
+			{
+				Test->AddError(TEXT("The camera added a post-animation delay instead of completing with stand-up."));
+				return true;
+			}
+			return false;
+		}
+		Test->TestTrue(TEXT("The opening camera reached and handed off its safe endpoint"), OpeningCamera->WasTransitionCompleted());
+		Test->TestFalse(TEXT("The completed opening has no active transition"), OpeningCamera->IsTransitionActive());
+		Test->TestTrue(TEXT("The endpoint preserves at least 100 cm from the player safety bounds"),
+			OpeningCamera->GetMinimumObservedClearance() + 0.1f >= OpeningCamera->MinPlayerClearance);
+		Test->TestTrue(TEXT("The final camera position matches the actual follow camera"), OpeningCamera->GetEndPositionError() <= 0.1f);
+		Test->TestTrue(TEXT("The final camera rotation matches the actual follow camera"), OpeningCamera->GetEndRotationError() <= 0.1f);
+		Test->TestEqual(TEXT("The gameplay view returns to the same player"), Fixture->Controller->GetViewTarget(), static_cast<AActor*>(Character));
+		Test->TestFalse(TEXT("The synchronized opening releases gameplay input"), Fixture->Viewport->IgnoreInput());
+		if (Mode != TEXT("Skip"))
+		{
+			Test->TestTrue(TEXT("The camera actually moves while the player is rising"), MaxTravel > 5.0f);
+		}
+		return true;
+	}
+
+private:
+	FAutomationTestBase* Test;
+	TSharedPtr<FMenuWorld> Fixture;
+	AAesirCampfireStart* Director;
+	ACharacter* Character;
+	FString Mode;
+	FVector StartLocation = FVector::ZeroVector;
+	TWeakObjectPtr<UAnimMontage> StandUpMontage;
+	float MaxTravel = 0.0f;
+	int32 Frames = 0;
+	int32 AnimationFinishedFrame = INDEX_NONE;
+	bool bStarted = false;
 };
 
 } // namespace AesirMenuTests
@@ -703,6 +869,8 @@ bool FAesirCampfireSitFlowTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestTrue(TEXT("Menu sit animations are enabled by default"), Director->bUsePlayerSitAnimations);
+	// These fixtures deliberately isolate the sit/stand-up contract from cameras.
+	Director->OpeningCamera->bEnabled = false;
 	if (!TestNotNull(TEXT("The default seated loop asset exists"), Director->MenuSitLoopAnimation.LoadSynchronous()) ||
 		!TestNotNull(TEXT("The default stand-up asset exists"), Director->StandUpAnimation.LoadSynchronous()))
 	{
@@ -720,6 +888,42 @@ bool FAesirCampfireSitFlowTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FAesirOpeningCameraFlowTest, "Aesir.Menu.CameraFlow",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+void FAesirOpeningCameraFlowTest::GetTests(TArray<FString>& OutBeautifiedNames, TArray<FString>& OutTestCommands) const
+{
+	for (const FString& Mode : { FString(TEXT("NaturalSlow")), FString(TEXT("NaturalFast")), FString(TEXT("Skip")), FString(TEXT("Destroy")), FString(TEXT("Blocked")) })
+	{
+		OutBeautifiedNames.Add(Mode);
+		OutTestCommands.Add(Mode);
+	}
+}
+
+bool FAesirOpeningCameraFlowTest::RunTest(const FString& Parameters)
+{
+	using namespace AesirMenuTests;
+	TSharedPtr<FMenuWorld> Fixture = MakeShared<FMenuWorld>();
+	ACharacter* Character = Fixture->Controller ? Fixture->CreateCameraCharacter(this) : nullptr;
+	if (!TestNotNull(TEXT("An animated character with a real follow camera is available"), Character))
+	{
+		return false;
+	}
+	AAesirCampfireStart* Director = Fixture->World->SpawnActor<AAesirCampfireStart>();
+	if (!TestNotNull(TEXT("The campfire owns an opening camera component"), Director ? Director->OpeningCamera.Get() : nullptr))
+	{
+		return false;
+	}
+	Director->StandUpPlayRate = Parameters == TEXT("NaturalSlow") ? 0.5f : 1.5f;
+	if (Parameters == TEXT("Blocked"))
+	{
+		AddExpectedError(TEXT("Campfire: synchronized camera aborted:"), EAutomationExpectedErrorFlags::Contains, 1);
+	}
+	Director->DispatchBeginPlay();
+	AddCommand(new FExerciseOpeningCamera(this, Fixture, Director, Character, Parameters));
+	return true;
+}
+
 #endif // WITH_EDITOR && WITH_DEV_AUTOMATION_TESTS
 
 #if WITH_EDITOR && !UE_BUILD_SHIPPING
@@ -730,6 +934,7 @@ bool FAesirCampfireSitFlowTest::RunTest(const FString& Parameters)
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Animation/AnimSequence.h"
+#include "Camera/CameraActor.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Combat/AesirHealthComponent.h"
@@ -742,6 +947,7 @@ bool FAesirCampfireSitFlowTest::RunTest(const FString& Parameters)
 #include "EngineUtils.h"
 #include "Framework/Flow/AesirCampfireStart.h"
 #include "Framework/Flow/AesirLevelFlowDirector.h"
+#include "Framework/Flow/AesirOpeningCameraComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -751,6 +957,7 @@ bool FAesirCampfireSitFlowTest::RunTest(const FString& Parameters)
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/Paths.h"
+#include "Misc/Parse.h"
 #include "TimerManager.h"
 #include "UI/AesirMainMenuWidget.h"
 #include "UnrealClient.h"
@@ -762,8 +969,8 @@ namespace AesirMainMenuSmoke
 class FRun final : public TSharedFromThis<FRun>
 {
 public:
-	explicit FRun(UWorld* InWorld, const bool bInQuitOnly)
-		: World(InWorld), StartedAt(FPlatformTime::Seconds()), bQuitOnly(bInQuitOnly)
+	explicit FRun(UWorld* InWorld, const bool bInQuitOnly, const float InStandUpRate)
+		: World(InWorld), StartedAt(FPlatformTime::Seconds()), RequestedStandUpRate(InStandUpRate), bQuitOnly(bInQuitOnly)
 	{
 		OutputDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("StartMenu"));
 		MenuScreenshot = OutputDirectory / TEXT("MainMenu.png");
@@ -1019,6 +1226,14 @@ private:
 			Fail(TEXT("The Main menu smoke test requires an animated campfire startup actor."));
 			return;
 		}
+		if (!bRateApplied)
+		{
+			if (RequestedStandUpRate > 0.0f)
+			{
+				Campfire->StandUpPlayRate = FMath::Clamp(RequestedStandUpRate, 0.1f, 3.0f);
+			}
+			bRateApplied = true;
+		}
 
 		if (!bStartClicked)
 		{
@@ -1117,9 +1332,33 @@ private:
 				Fail(TEXT("Start did not enter the guarded stand-up opening before exploration."));
 				return;
 			}
+			UAesirOpeningCameraComponent* Camera = Campfire->OpeningCamera;
+			if (!Camera || !Camera->bEnabled || !Camera->IsTransitionActive() ||
+				!Camera->GetTransitionCamera() || Controller->GetViewTarget() != Camera->GetTransitionCamera())
+			{
+				Fail(TEXT("Start did not immediately activate the synchronized opening camera."));
+				return;
+			}
+			CameraStartLocation = Camera->GetTransitionCamera()->GetActorLocation();
 			bStartClicked = true;
 			StartClickedAt = Now;
 			UE_LOG(LogAesirWarden, Display, TEXT("START_MENU_MAIN_SMOKE_STAND_UP: real player entered Sit_End; direct exploration is blocked."));
+			return;
+		}
+		UAesirOpeningCameraComponent* OpeningCamera = Campfire->OpeningCamera;
+		if (!OpeningCamera)
+		{
+			Fail(TEXT("The campfire lost its opening camera component."));
+			return;
+		}
+		if (ACameraActor* Camera = OpeningCamera->GetTransitionCamera())
+		{
+			MaxCameraTravel = FMath::Max(MaxCameraTravel, FVector::Distance(CameraStartLocation, Camera->GetActorLocation()));
+		}
+		if (OpeningCamera->IsTransitionActive() &&
+			OpeningCamera->GetMinimumObservedClearance() + 0.1f < OpeningCamera->MinPlayerClearance)
+		{
+			Fail(TEXT("The transition camera entered the player's one-metre safety clearance."));
 			return;
 		}
 
@@ -1136,7 +1375,7 @@ private:
 					Fail(TEXT("Stand-up released gameplay before its montage completed."));
 					return;
 				}
-				if (!bStandUpScreenshotRequested && Now - StartClickedAt >= 0.5)
+				if (!bStandUpScreenshotRequested && OpeningCamera->GetProgress() >= 0.3f)
 				{
 					FScreenshotRequest::RequestScreenshot(StandUpScreenshot, true, false);
 					bStandUpScreenshotRequested = true;
@@ -1146,6 +1385,18 @@ private:
 		}
 		if (!bStartedScreenshotRequested)
 		{
+			if (!OpeningCamera->WasTransitionCompleted() || OpeningCamera->IsTransitionActive() ||
+				OpeningCamera->GetMinimumObservedClearance() + 0.1f < OpeningCamera->MinPlayerClearance ||
+				OpeningCamera->GetEndPositionError() > 0.1f || OpeningCamera->GetEndRotationError() > 0.1f || MaxCameraTravel < 5.0f)
+			{
+				Fail(FString::Printf(TEXT("The opening camera did not complete a safe, moving, matched handoff: completed=%d, active=%d, clearance=%.2f, travel=%.2f, endpointError=%.3f cm/%.3f deg."),
+					OpeningCamera->WasTransitionCompleted(), OpeningCamera->IsTransitionActive(), OpeningCamera->GetMinimumObservedClearance(),
+					MaxCameraTravel, OpeningCamera->GetEndPositionError(), OpeningCamera->GetEndRotationError()));
+				return;
+			}
+			UE_LOG(LogAesirWarden, Display, TEXT("START_MENU_CAMERA_PASS: rate=%.2f; minimum body clearance=%.2f cm; camera travel=%.2f cm; endpoint error=%.3f cm/%.3f degrees; simultaneous stand-up handoff in %.3f seconds."),
+				Campfire->StandUpPlayRate, OpeningCamera->GetMinimumObservedClearance(), MaxCameraTravel,
+				OpeningCamera->GetEndPositionError(), OpeningCamera->GetEndRotationError(), Now - StartClickedAt);
 			if (Controller->IsMoveInputIgnored() || Controller->IsLookInputIgnored() ||
 				Viewport->IgnoreInput() || Controller->bShowMouseCursor ||
 				(Menu.IsValid() && Menu->IsInViewport()) || Controller->GetViewTarget() != Controller->GetPawn())
@@ -1191,6 +1442,10 @@ private:
 	double ExplorationAt = 0.0;
 	double QuitRequestedAt = 0.0;
 	float InitialHealth = 0.0f;
+	float RequestedStandUpRate = 0.0f;
+	FVector CameraStartLocation = FVector::ZeroVector;
+	float MaxCameraTravel = 0.0f;
+	bool bRateApplied = false;
 	bool bQuitOnly = false;
 	bool bQuitRequested = false;
 	bool bStartClicked = false;
@@ -1204,7 +1459,7 @@ TSharedPtr<FRun> ActiveRun;
 
 FAutoConsoleCommandWithWorldAndArgs RunCommand(
 	TEXT("Aesir.Menu.Smoke"),
-	TEXT("Verify the startup menu, 10s idle combat gate, Start handoff, HUD and input. Save screenshots and exit. Optional argument 'quit' checks only the Quit button. Editor builds only."),
+	TEXT("Verify menu, 10s idle combat gate, synchronized camera/stand-up, HUD and input. Save screenshots and exit. Optional 'quit' checks Quit; 'rate=0.5' overrides stand-up speed for this run. Editor builds only."),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
 		if (!World || !World->IsGameWorld())
@@ -1218,7 +1473,12 @@ FAutoConsoleCommandWithWorldAndArgs RunCommand(
 			return;
 		}
 		const bool bQuitOnly = !Args.IsEmpty() && Args[0].Equals(TEXT("quit"), ESearchCase::IgnoreCase);
-		ActiveRun = MakeShared<FRun>(World, bQuitOnly);
+		float StandUpRate = 0.0f;
+		for (const FString& Arg : Args)
+		{
+			FParse::Value(*Arg, TEXT("rate="), StandUpRate);
+		}
+		ActiveRun = MakeShared<FRun>(World, bQuitOnly, StandUpRate);
 		ActiveRun->Begin();
 	}));
 

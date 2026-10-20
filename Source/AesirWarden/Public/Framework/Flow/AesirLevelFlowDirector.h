@@ -64,8 +64,13 @@ protected:
 	virtual void PrepareMainMenuPresentation();
 	virtual bool BeginOpeningPresentation();
 	virtual void FinishOpeningPresentation(bool bSkipped);
+	virtual bool TrySkipOpeningPresentation();
+	virtual bool IsGameplayCameraReady() const;
+	virtual float GetGameplayCameraBlendTime() const;
 	bool IsOpeningPresentationPending() const { return bOpeningPresentationPending; }
 	void CompleteOpeningPresentation();
+	/** Restore the locked menu after presentation validation fails; never fall through into combat. */
+	void AbortOpeningPresentation(FText FailureStatus);
 
 	/** Bind the menu's Blueprint dispatcher here, before the widget is added to the viewport. */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Aesir|Level Flow")
@@ -121,6 +126,7 @@ private:
 	friend class UAesirStartMenuEditorLibrary;
 
 	void TryInitializeFlow();
+	void RecoverMainMenuAfterOpeningFailure();
 	void RefreshMenuStreamingState();
 	bool IsStartupStreamingReady() const;
 	void PresentMainMenu();
@@ -161,5 +167,6 @@ private:
 	bool bOpeningPresentationPending = false;
 	bool bWaitingForGameplayStreaming = false;
 	bool bMenuFocusInitialized = false;
+	FText OpeningFailureStatus;
 	TMap<TWeakObjectPtr<UUserWidget>, ESlateVisibility> HiddenGameplayHUD;
 };
