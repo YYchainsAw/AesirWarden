@@ -12,6 +12,7 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Engine/Font.h"
 #include "GameFramework/PlayerController.h"
 #include "Styling/CoreStyle.h"
 
@@ -29,6 +30,9 @@ void UAesirMainMenuWidget::BuildDefaultMenuTree(UWidgetTree* InWidgetTree)
 	const FLinearColor EmberGold(0.76f, 0.57f, 0.31f, 1.0f);
 	const FLinearColor Charcoal(0.025f, 0.03f, 0.035f, 0.88f);
 	const FLinearColor QuietText(0.60f, 0.60f, 0.57f, 1.0f);
+	// A UFont asset survives Blueprint serialization and is included by the cooker.
+	// CoreStyle's transient composite font is suitable for native Slate, not saved UMG trees.
+	UFont* MenuFont = LoadObject<UFont>(nullptr, TEXT("/Engine/EngineFonts/Roboto.Roboto"));
 
 	UCanvasPanel* Root = InWidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("MenuRoot"));
 	Root->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
@@ -50,12 +54,12 @@ void UAesirMainMenuWidget::BuildDefaultMenuTree(UWidgetTree* InWidgetTree)
 	UVerticalBox* Content = InWidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("MenuContent"));
 	Panel->SetContent(Content);
 
-	auto AddText = [InWidgetTree, Content](const FName Name, const FText& Text,
+	auto AddText = [InWidgetTree, Content, MenuFont](const FName Name, const FText& Text,
 		const int32 Size, const FName Typeface, const FLinearColor& Color)
 	{
 		UTextBlock* Label = InWidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
 		Label->SetText(Text);
-		Label->SetFont(FCoreStyle::GetDefaultFontStyle(Typeface, Size));
+		Label->SetFont(FSlateFontInfo(MenuFont, Size, Typeface));
 		Label->SetColorAndOpacity(FSlateColor(Color));
 		Label->SetVisibility(ESlateVisibility::HitTestInvisible);
 		Content->AddChildToVerticalBox(Label);
@@ -76,7 +80,7 @@ void UAesirMainMenuWidget::BuildDefaultMenuTree(UWidgetTree* InWidgetTree)
 	EmberLine->SetContent(LineHeight);
 	Content->AddChildToVerticalBox(EmberLine)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 34.0f));
 
-	auto AddAction = [InWidgetTree, Content, Ash, EmberGold](const FName ButtonName,
+	auto AddAction = [InWidgetTree, Content, Ash, EmberGold, MenuFont](const FName ButtonName,
 		const FName LabelName, const FText& Text)
 	{
 		UButton* Button = InWidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), ButtonName);
@@ -91,7 +95,7 @@ void UAesirMainMenuWidget::BuildDefaultMenuTree(UWidgetTree* InWidgetTree)
 		Button->SetBackgroundColor(EmberGold);
 		UTextBlock* Label = InWidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), LabelName);
 		Label->SetText(Text);
-		Label->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), 20));
+		Label->SetFont(FSlateFontInfo(MenuFont, 20, TEXT("Regular")));
 		Label->SetColorAndOpacity(FSlateColor(Ash));
 		Button->SetContent(Label);
 		Content->AddChildToVerticalBox(Button)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 12.0f));

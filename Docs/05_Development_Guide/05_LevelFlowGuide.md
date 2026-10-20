@@ -2,6 +2,8 @@
 
 > 2026-09-30：已实现 C++ 菜单、开场和探索交接；蓝图接入与 PIE 验收待完成。
 
+2026-10-20 已新增并在 Main 接入可编辑营火菜单，当前制作入口与实测记录见[营火菜单接手指南](07_CampfireMenuSetup.md)。下文保留原有导演的手工接线说明；新 `WBP_CampfireMainMenu` 的开始/退出按钮由原生父类自动绑定。
+
 设计依据：[第一关完整游戏流程](../02_Design_Doc/GDD/01_GameFlow.md)。本阶段覆盖 `Uninitialized → MainMenu → OpeningCinematic → Exploration`。Boss 入场、策略/Episode 启停、胜败和重试仍按后续阶段接入，枚举中的这些状态只是预留。
 
 ## 源码

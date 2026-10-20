@@ -8,9 +8,11 @@
 #include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Widget.h"
+#include "Components/TextBlock.h"
 #include "Engine/Blueprint.h"
 #include "Engine/BlueprintGeneratedClass.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/Font.h"
 #include "Framework/Flow/AesirCampfireStart.h"
 #include "HAL/FileManager.h"
 #include "Kismet2/CompilerResultsLog.h"
@@ -121,12 +123,24 @@ bool UAesirStartMenuEditorLibrary::CreateStartMenuAssets()
 	// UE 5.8 tracks every source widget, including non-variable layout containers.
 	// Repair metadata without replacing a user-authored Designer tree.
 	bool bRepairedWidgetGuids = false;
-	WidgetBlueprint->ForEachSourceWidget([WidgetBlueprint, &bRepairedWidgetGuids](UWidget* Widget)
+	UFont* MenuFont = LoadObject<UFont>(nullptr, TEXT("/Engine/EngineFonts/Roboto.Roboto"));
+	WidgetBlueprint->ForEachSourceWidget([WidgetBlueprint, MenuFont, &bRepairedWidgetGuids](UWidget* Widget)
 	{
 		if (!WidgetBlueprint->WidgetVariableNameToGuidMap.Contains(Widget->GetFName()))
 		{
 			WidgetBlueprint->OnVariableAdded(Widget->GetFName());
 			bRepairedWidgetGuids = true;
+		}
+		if (UTextBlock* Label = Cast<UTextBlock>(Widget))
+		{
+			FSlateFontInfo Font = Label->GetFont();
+			if (!Font.FontObject && MenuFont)
+			{
+				Font.FontObject = MenuFont;
+				Font.CompositeFont.Reset();
+				Label->SetFont(Font);
+				bRepairedWidgetGuids = true;
+			}
 		}
 	});
 	if (!CompileBlueprint(WidgetBlueprint) || ((bCreatedWidget || bRepairedWidgetGuids) && !SaveBlueprint(WidgetBlueprint)))
