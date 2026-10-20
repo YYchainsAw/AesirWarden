@@ -136,7 +136,11 @@ void UAesirMainMenuWidget::BuildDefaultMenuTree(UWidgetTree* InWidgetTree)
 		Button->SetStyle(Style);
 		Button->SetBackgroundColor(FLinearColor::White);
 		Button->SetColorAndOpacity(FLinearColor::White);
-		Button->SetContent(MakeText(LabelName, Text, 55));
+		UTextBlock* Label = MakeText(LabelName, Text, 55);
+		// Source Han's generous line metrics extend beyond its visible Chinese
+		// glyphs. Keep the requested size and optically center the ink in the frame.
+		Label->SetRenderTranslation(FVector2D(0.0f, -18.0f));
+		Button->SetContent(Label);
 		Height->SetContent(Button);
 		return Button;
 	};

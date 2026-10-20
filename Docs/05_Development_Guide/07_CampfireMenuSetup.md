@@ -1,6 +1,6 @@
 # Main 起点营火菜单接手指南
 
-> 2026-10-20：菜单框架与玩家坐姿/起身交接。完整第一关流程仍见 [05_LevelFlowGuide.md](05_LevelFlowGuide.md)；本轮不代表 M1 完成。坐姿增量的验证状态见文末，不沿用首版菜单测试结果。
+> 2026-10-20：菜单框架、玩家坐姿/起身交接与透明黄金分割布局。完整第一关流程仍见 [05_LevelFlowGuide.md](05_LevelFlowGuide.md)；本轮不代表 M1 完成。各次增量的验证状态见文末，不沿用首版菜单测试结果。
 
 ## 打开后先调整哪里
 
@@ -8,12 +8,36 @@
 
 | 资产 | 用途与调整入口 |
 | --- | --- |
-| `/Game/Aesir/UI/Menus/WBP_CampfireMainMenu` | 打开 UMG Designer，调整右侧标题、开始、退出、状态文字的布局和样式。原生父类为 `AesirMainMenuWidget`。 |
+| `/Game/Aesir/UI/Menus/WBP_CampfireMainMenu` | 打开 UMG Designer，调整 Logo、开始游戏、设置、制作人员、退出游戏与详情子页的布局和样式。原生父类为 `AesirMainMenuWidget`。 |
 | `/Game/Aesir/Framework/Flow/BP_AesirCampfireStart` | 营火、菜单相机与流程控制器合在一个 Actor 中。可修改 BP 默认外观，也可在 Main 中调整实例位置及相机。原生父类为 `AesirCampfireStart`。 |
 
-菜单左侧留给场景与角色，右侧先提供可操作框架。**保留 `Btn_Start`、`Btn_Quit`、`Txt_Status` 三个控件名及对应类型 `Button`、`Button`、`TextBlock`**，即可沿用 C++ 自动绑定；不必再写 OnClicked 调用链。自定义动画、声音、字体、标题、背景与边距均可在 Designer 中调整。
+菜单左侧留给场景与角色，右侧提供可操作框架。**保留 `Btn_Start`、`Btn_Settings`、`Btn_Credits`、`Btn_Quit`、`Btn_Back` 的 Button 类型和名称**，即可沿用 C++ 自动绑定；不必再写 OnClicked 调用链。还应保留 `MenuActions`、`MenuDetails` 两个页面容器，以及 `Txt_Status`、`Txt_DetailsTitle`、`Txt_DetailsBody` 三个 TextBlock 名称，供加载状态和子页切换使用。自定义动画、声音、字体、标题与边距均可在 Designer 中调整。
 
 开始按钮等待起点 World Partition 流送就绪后启用；加载期间状态文字提示准备中，退出仍可使用。菜单与开场阶段锁定玩家游戏输入，隐藏配置在 `Gameplay HUD Widget Classes` 中的战斗 HUD；进入探索后恢复。缺少 BP 布局时 C++ 也有基础菜单，但正式美术调整应在 WBP 中完成。
+
+## 透明黄金分割菜单布局
+
+当前布局以整个游戏视口为参照：主纵轴在屏幕宽度的 **61.8034%**，Logo 中心在屏幕高度的 **38.1966%**；四个主按钮按“开始游戏 → 设置 → 制作人员 → 退出游戏”排列在 Logo 下方，并与 Logo 共用纵轴。以 1920×1080 为例，两条参考线约为 `X=1186.6`、`Y=412.5`。这些位置使用 Canvas Anchors 表达，不是仅适用于一种分辨率的绝对坐标。
+
+面板容器不绘制底色，按钮只绘制 Kenney `panel_border_002` 的透明中心边框，Logo 下方使用 `divider_fade_003` 左右镜像组合；悬停、按下和禁用状态只改变边框颜色。营火与地图应能透过所有面板和按钮中心看到。文字采用米白色、细暗色描边和轻微阴影，保证场景较亮时仍可识别；它们不构成面板背景。
+
+按钮统一使用 **55 号思源宋体简体中文 Regular**：`/Game/Aesir/UI/Fonts/F_MenuSerif`，Font Face 为 `/Game/Aesir/UI/Fonts/FF_SourceHanSerifSC_Regular`。Logo 保留图片 `/Game/Aesir/UI/Art/Logo/logo`；字体通过衬线、颜色与 Logo 的古典方向协调，不改变图片里的定制字形。字体原文件与授权保存在 `SourceArt/UI/Fonts/SourceHanSerif/`。
+
+在 WBP 的 **Designer → Hierarchy** 中选择下列控件，在右侧 Details 调整：
+
+| 控件 | 调整入口与当前值 |
+| --- | --- |
+| `Img_Logo` | `Slot (Canvas Panel Slot)`：Anchors `(0.618034, 0.381966)`、Alignment `(0.5, 0.5)`、Position `(0, 0)`；宽度 640，按原图比例设置高度。改大或改小时同时保持宽高比例，避免把 Logo 压成细条。 |
+| `MenuDivider` | 与 Logo 使用相同 Anchor，Alignment `(0.5, 0)`；宽 400、高 30，Position Y 为 Logo 半高加 8。内部两个 Image 的 Tint 可以统一调整分隔线颜色。 |
+| `MenuPanelSize` | 与 Logo 使用相同 Anchor，Alignment `(0.5, 0)`、Auto Size 开启；`Width Override=500`，Position Y 为 Logo 半高加 56。调整这里会同时移动四按钮和详情子页。 |
+| `Btn_Start_Size`、`Btn_Settings_Size`、`Btn_Credits_Size`、`Btn_Quit_Size` | `Height Override=88`，Vertical Box Slot 的下间距为 8；改变它们可调整按钮高度和间隔。 |
+| `Btn_Start` 等按钮 | `Appearance → Style` 下的 Normal/Hovered/Pressed/Disabled 均使用透明边框纹理，`Draw As=Box`、Margin 四边为 `0.25`；修改 Tint 可调边框颜色。不要换成带实心中心的 Panel 纹理。 |
+| `Txt_Start`、`Txt_Settings`、`Txt_Credits`、`Txt_Quit` | `Appearance → Font`：Font 为 `F_MenuSerif`、Typeface 为 `Regular`、Size 为 `55`；可统一修改颜色、描边和阴影。`Render Transform → Translation Y=-18` 补偿此字体较大的行高，让可见汉字在边框内居中；换字体后可在此微调，不必缩小字号。 |
+| `MenuDetails` | Designer 中临时把 Visibility 从 Collapsed 改为可见，并隐藏 `MenuActions`，便于调整子页。完成后将 `MenuDetails` 恢复为 Collapsed。 |
+
+设置和制作人员当前是**可返回的透明子页框架**：点击后隐藏四个主按钮，显示标题、说明文字与“返回”按钮；返回、Esc 或手柄返回键恢复主菜单。设置项尚未连接画质、音量或键位配置，制作名单也仍是占位文案。
+
+若要改运行时子页内容，在 WBP 的 Graph 中添加 **On Settings Opened** 或 **On Credits Opened** 事件，用 `Txt_DetailsTitle`、`Txt_DetailsBody` 的 `Set Text` 设置自己的文案，或扩展子页里的控件。原生按钮事件会先填写默认文案，再调用这两个事件；只在 Designer 改这两个 TextBlock 的预览文字会被运行时默认值覆盖。保留 `Btn_Back` 可以继续使用原生返回逻辑。
 
 ## 配置玩家坐姿和起身
 
@@ -114,6 +138,30 @@ setup_start_menu.install_in_main_at_player_start()
 
 若希望自己选点，可在已打开的地图调用 `setup_start_menu.place_start_menu(unreal.Vector(x, y, z))`，这条入口支持撤销，并把保存交给用户。
 
+### 显式重建黄金分割布局
+
+[setup_golden_menu.py](../../Scripts/Editor/setup_golden_menu.py) 用于重新生成本指南的透明菜单。**它会覆盖 `WBP_CampfireMainMenu` 的现有 Designer 布局**，适合首次接入或主动恢复这套布局。日常直接在 UMG 调整即可；正常启动游戏、导入该脚本模块，以及上面的 `create_start_menu_assets()` 都不会触发这次重建，已有布局仍被保留。
+
+需要重建时，先保存 WBP 并停止 PIE，在 UE Python 控制台显式执行：
+
+```python
+import sys, unreal
+from pathlib import Path
+sys.path.insert(0, str(Path(unreal.Paths.project_dir()) / "Scripts" / "Editor"))
+import setup_golden_menu
+setup_golden_menu.setup_golden_menu()
+```
+
+脚本先检查已有菜单、透明 Logo 和两张 Kenney 纹理，在 `Saved/StartMenu/BeforeGoldenLayout/<时间戳>/` 备份已保存的 WBP 与 Logo；随后导入思源宋体 Font Face、建立菜单 Font、设置 Logo 的 UI 纹理参数，重建并保存 WBP，Designer 预览设为 1920×1080。运行报告位于 `Saved/StartMenu/GoldenLayout/manifest.json`。需要恢复旧布局时，关闭编辑器后用该次备份中的 `WBP_CampfireMainMenu.uasset` 恢复原资产路径，再重新打开项目。
+
+也可保存并关闭交互式编辑器后，按脚本头部示例以正常编辑器模式打开 Entry 并直接执行文件；直接执行会调用同一个重建函数。命令形式为：
+
+```text
+UnrealEditor-Cmd.exe AesirWarden.uproject /Engine/Maps/Entry -EnablePlugins=PythonScriptPlugin -ExecutePythonScript=".../Scripts/Editor/setup_golden_menu.py" -NullRHI -Unattended
+```
+
+将命令中的程序、项目和脚本路径替换为本机完整路径。这里需要正常编辑器初始化 Slate：UE 5.8 的 Font Face 导入会访问 Slate，`-run=pythonscript` commandlet 没有该初始化，会触发字体导入断言，因此本脚本使用 `-ExecutePythonScript`。避免同时从两个编辑器进程保存这些资产。
+
 代码、脚本和项目自制的两个 BP 可进入 Git；Main、第三方素材及 `Content/__ExternalActors__` / `Content/__ExternalObjects__` 按现有忽略规则留在本地。另一台电脑仅拉取 Git 无法得到 Main，需要先准备合法来源的地图与素材，再运行恢复入口。
 
 ## 验收记录
@@ -152,3 +200,14 @@ setup_start_menu.install_in_main_at_player_start()
 新增 `Aesir.Menu.ConstructionRecovery.Native` 与 `.Blueprint` 两项回归，检查 CameraComponent 的事务标记，并精确模拟有效 Camera Actor 的 CameraComponent 暂缺，以及 ChildActorComponent 暂缺，随后还原并验证相机/FOV 恢复。`AesirWardenEditor Win64 Development` 完整编译与链接通过；`Aesir.Menu` 共 9 项通过，0 失败、0 警告，报告为 `Saved/StartMenu/CrashFix/Automation/index.json`。另在完整编辑器的临时 Entry 世界中，对原生类和实际 BP 分别连续执行 3 次删除、撤销，共 6 次均不崩溃，CameraComponent 与 MenuCamera 引用正常恢复；记录为 `Saved/StartMenu/CrashFix/delete_undo.json`、`Saved/Logs/CampfireDeleteUndoFullEditor.log`。
 
 对 `/Game/Main` 中已保存的营火实例另做 3 次真实删除、撤销，相机组件与菜单相机引用均恢复，Actor 及美术组件的变换、灯光颜色和强度保持一致；记录为 `Saved/StartMenu/CrashFix/saved_main_delete_undo.json`、`Saved/Logs/CampfireSavedMainUndo.log`。使用最终 DLL 的 Main Standalone 菜单 → 起身 → 探索检查也通过，玩家 150 HP 保持 10 秒、Boss 保持等待、起身后输入与 HUD 恢复；日志为 `Saved/Logs/CampfireCrashFixMainSmoke.log`，终局标记 `START_MENU_MAIN_SMOKE_PASS`。以上独立检查均未保存资产，Main、营火 BP 和火焰 MI 的 SHA256 与用户关闭编辑器后的记录相同。
+
+### 透明黄金分割菜单增量
+
+| 检查 | 本轮结果与证据 |
+| --- | --- |
+| Editor 完整编译 | `AesirWardenEditor Win64 Development` 编译与链接通过；日志 `Saved/Logs/GoldenMenuBuild.log`。引擎头文件仍有既有弃用 API 提示。 |
+| 字体导入、WBP 重建与备份 | 通过，WBP 编译 0 错误并保存；报告 `Saved/StartMenu/GoldenLayout/manifest.json`、日志 `Saved/Logs/GoldenMenuAssets.log`。改动前的用户布局另保存在 `Saved/StartMenu/BeforeGoldenLayout/20261020-171821/`。 |
+| 设置、制作人员、返回与开始就绪状态 | `Aesir.Menu` 共 9 项通过，0 失败、0 警告；`WidgetActions` 覆盖原生菜单与保存的 WBP 两种类，验证子页、返回和开始就绪状态；报告 `Saved/StartMenu/GoldenLayout/Automation/index.json`。 |
+| Main 实机布局、透明效果与起身交接 | 1920×1080 Standalone 通过 `START_MENU_PRESENTATION_PASS` 与 `START_MENU_MAIN_SMOKE_PASS`；实际 Logo 中心 `(0.6180, 0.3820)`，四按钮共轴、55 号且均在屏幕内。目视确认字体、Logo 比例及边框中心透出地图；菜单等待 10 秒内玩家 150 HP 不变、Boss 保持等待，起身后恢复输入和 HUD；日志 `Saved/Logs/GoldenMenuMainSmoke1920.log`，截图 `Saved/StartMenu/GoldenLayout/Preview/`。 |
+
+本次截图通过进程参数 `-ForceRes -ResX=1920 -ResY=1080 -RenderOffscreen` 指定分辨率；截图进程临时执行 `DisableAllScreenMessages` 隐藏开发提示，未修改地图或项目渲染配置。设置仍为可扩展的占位子页，尚未接入实际画质、音量和键位；本轮也未进行 cooked Windows 包验收。
