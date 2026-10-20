@@ -25,6 +25,7 @@ class AESIRWARDEN_API AAesirCampfireStart : public AAesirLevelFlowDirector
 
 public:
 	AAesirCampfireStart();
+	virtual void PostRegisterAllComponents() override;
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void Tick(float DeltaSeconds) override;
 
@@ -91,6 +92,7 @@ protected:
 	virtual void FinishOpeningPresentation(bool bSkipped) override;
 
 private:
+	void RefreshMenuCamera();
 	void UpdateFlameScale();
 	UAnimMontage* PlayPlayerPresentationAnimation(UAnimSequence* Animation, float PlayRate, float BlendInTime);
 	void HandleStandUpEnded(UAnimMontage* Montage, bool bInterrupted);

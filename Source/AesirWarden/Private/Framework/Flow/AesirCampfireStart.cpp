@@ -78,15 +78,56 @@ AAesirCampfireStart::AAesirCampfireStart()
 	Firelight->SetCastShadows(false);
 }
 
+void AAesirCampfireStart::PostRegisterAllComponents()
+{
+	Super::PostRegisterAllComponents();
+	// Also cover saved actors loaded without rerunning their construction script.
+	RefreshMenuCamera();
+}
+
 void AAesirCampfireStart::ConfigureFlameMesh(UStaticMesh* Mesh)
 {
-	FlameCard->SetStaticMesh(Mesh);
-	FlameCardCross->SetStaticMesh(Mesh);
+	if (IsValid(FlameCard))
+	{
+		FlameCard->SetStaticMesh(Mesh);
+	}
+	if (IsValid(FlameCardCross))
+	{
+		FlameCardCross->SetStaticMesh(Mesh);
+	}
 	UpdateFlameScale();
+}
+
+void AAesirCampfireStart::RefreshMenuCamera()
+{
+	ACameraActor* ChildCamera = IsValid(MenuCameraChild) ? Cast<ACameraActor>(MenuCameraChild->GetChildActor()) : nullptr;
+	MenuCamera = nullptr;
+	if (IsValid(ChildCamera))
+	{
+		// Delete/Undo can restore a child actor before its native components.
+		// Actor validity alone does not guarantee a camera component exists yet.
+		if (UCameraComponent* CameraComponent = ChildCamera->GetCameraComponent(); IsValid(CameraComponent))
+		{
+#if WITH_EDITOR
+			if (const UWorld* World = GetWorld(); World && !World->IsGameWorld())
+			{
+				// ChildActorComponent makes the actor and root transactional, but not
+				// this native non-root component. Preserve it when deletion is undone.
+				CameraComponent->SetFlags(RF_Transactional);
+			}
+#endif
+			CameraComponent->SetFieldOfView(50.0f);
+			MenuCamera = ChildCamera;
+		}
+	}
 }
 
 void AAesirCampfireStart::UpdateFlameScale()
 {
+	if (!IsValid(FlameCard))
+	{
+		return;
+	}
 	if (const UStaticMesh* Mesh = FlameCard->GetStaticMesh())
 	{
 		const float MeshHeight = FMath::Max(Mesh->GetBounds().BoxExtent.Z * 2.0f, 1.0f);
@@ -97,49 +138,59 @@ void AAesirCampfireStart::UpdateFlameScale()
 void AAesirCampfireStart::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	MenuCamera = Cast<ACameraActor>(MenuCameraChild->GetChildActor());
-	if (IsValid(MenuCamera))
-	{
-		MenuCamera->GetCameraComponent()->SetFieldOfView(50.0f);
-	}
+	RefreshMenuCamera();
 
 	// Engine primitives keep the editable scaffold usable even without the private art assets.
-	Firewood->ClearInstances();
-	for (int32 Index = 0; Index < 4; ++Index)
+	// Undo may also be restoring these components; leave incomplete ones alone.
+	if (IsValid(Firewood))
 	{
-		const float Angle = 45.0f + Index * 90.0f;
-		Firewood->AddInstance(FTransform(FRotator(90.0f, Angle, 0.0f),
-			FVector(0.0f, 0.0f, 12.0f + (Index % 2) * 9.0f), FVector(0.17f, 0.17f, 0.95f)));
+		Firewood->ClearInstances();
+		for (int32 Index = 0; Index < 4; ++Index)
+		{
+			const float Angle = 45.0f + Index * 90.0f;
+			Firewood->AddInstance(FTransform(FRotator(90.0f, Angle, 0.0f),
+				FVector(0.0f, 0.0f, 12.0f + (Index % 2) * 9.0f), FVector(0.17f, 0.17f, 0.95f)));
+		}
+		if (UMaterialInstanceDynamic* WoodMaterial = Firewood->CreateAndSetMaterialInstanceDynamic(0))
+		{
+			WoodMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.09f, 0.035f, 0.012f));
+		}
 	}
-	StoneRing->ClearInstances();
-	for (int32 Index = 0; Index < 10; ++Index)
+	if (IsValid(StoneRing))
 	{
-		const float Angle = Index * 2.0f * PI / 10.0f;
-		StoneRing->AddInstance(FTransform(FRotator(0.0f, FMath::RadiansToDegrees(Angle), 0.0f),
-			FVector(FMath::Cos(Angle) * 62.0f, FMath::Sin(Angle) * 62.0f, 9.0f), FVector(0.30f, 0.24f, 0.18f)));
-	}
-	if (UMaterialInstanceDynamic* WoodMaterial = Firewood->CreateAndSetMaterialInstanceDynamic(0))
-	{
-		WoodMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.09f, 0.035f, 0.012f));
-	}
-	if (UMaterialInstanceDynamic* RockMaterial = StoneRing->CreateAndSetMaterialInstanceDynamic(0))
-	{
-		RockMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.15f, 0.14f, 0.13f));
+		StoneRing->ClearInstances();
+		for (int32 Index = 0; Index < 10; ++Index)
+		{
+			const float Angle = Index * 2.0f * PI / 10.0f;
+			StoneRing->AddInstance(FTransform(FRotator(0.0f, FMath::RadiansToDegrees(Angle), 0.0f),
+				FVector(FMath::Cos(Angle) * 62.0f, FMath::Sin(Angle) * 62.0f, 9.0f), FVector(0.30f, 0.24f, 0.18f)));
+		}
+		if (UMaterialInstanceDynamic* RockMaterial = StoneRing->CreateAndSetMaterialInstanceDynamic(0))
+		{
+			RockMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.15f, 0.14f, 0.13f));
+		}
 	}
 	UpdateFlameScale();
-	Firelight->SetIntensity(FirelightIntensity);
+	if (IsValid(Firelight))
+	{
+		Firelight->SetIntensity(FirelightIntensity);
+	}
 }
 
 void AAesirCampfireStart::BeginPlay()
 {
-	MenuCamera = Cast<ACameraActor>(MenuCameraChild->GetChildActor());
+	RefreshMenuCamera();
 	Super::BeginPlay();
-	SetActorTickEnabled(bAnimateFirelight);
+	SetActorTickEnabled(bAnimateFirelight && IsValid(Firelight));
 }
 
 void AAesirCampfireStart::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (!IsValid(Firelight) || !GetWorld())
+	{
+		return;
+	}
 	const float Time = GetWorld()->GetTimeSeconds();
 	const float Flicker = 1.0f + 0.06f * FMath::Sin(Time * 9.7f) + 0.035f * FMath::Sin(Time * 17.3f);
 	Firelight->SetIntensity(FirelightIntensity * Flicker);

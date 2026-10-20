@@ -8,8 +8,11 @@
 #include "Animation/AnimMontage.h"
 #include "Animation/AnimSequence.h"
 #include "Blueprint/WidgetTree.h"
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
+#include "Components/ChildActorComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/TextBlock.h"
 #include "Components/WorldPartitionStreamingSourceComponent.h"
@@ -25,6 +28,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
+#include "Misc/ScopeExit.h"
 #include "Slate/SceneViewport.h"
 #include "UI/AesirMainMenuWidget.h"
 #include "UObject/UnrealType.h"
@@ -396,6 +400,98 @@ private:
 
 } // namespace AesirMenuTests
 
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FAesirCampfireConstructionRecoveryTest, "Aesir.Menu.ConstructionRecovery",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+void FAesirCampfireConstructionRecoveryTest::GetTests(TArray<FString>& OutBeautifiedNames, TArray<FString>& OutTestCommands) const
+{
+	OutBeautifiedNames.Add(TEXT("Native"));
+	OutTestCommands.Add(TEXT("Native"));
+	OutBeautifiedNames.Add(TEXT("Blueprint"));
+	OutTestCommands.Add(TEXT("Blueprint"));
+}
+
+bool FAesirCampfireConstructionRecoveryTest::RunTest(const FString& Parameters)
+{
+	using namespace AesirMenuTests;
+	UClass* CampfireClass = AAesirCampfireStart::StaticClass();
+	if (Parameters == TEXT("Blueprint"))
+	{
+		CampfireClass = LoadClass<AAesirCampfireStart>(nullptr,
+			TEXT("/Game/Aesir/Framework/Flow/BP_AesirCampfireStart.BP_AesirCampfireStart_C"));
+	}
+	if (!TestNotNull(TEXT("The campfire class is available"), CampfireClass))
+	{
+		return false;
+	}
+
+	// Keep reconstruction away from Main and the editor's current world/undo stack.
+	const UWorld::InitializationValues Initialization = UWorld::InitializationValues()
+		.AllowAudioPlayback(false).CreateNavigation(false).CreateAISystem(false)
+		.ShouldSimulatePhysics(false).SetTransactional(false);
+	UWorld* World = UWorld::CreateWorld(EWorldType::EditorPreview, false,
+		MakeUniqueObjectName(GetTransientPackage(), UWorld::StaticClass(), TEXT("AesirConstructionTest")),
+		GetTransientPackage(), true, ERHIFeatureLevel::Num, &Initialization);
+	if (!TestNotNull(TEXT("A private editor world can be created"), World))
+	{
+		return false;
+	}
+	GEngine->CreateNewWorldContext(EWorldType::EditorPreview).SetCurrentWorld(World);
+	ON_SCOPE_EXIT
+	{
+		World->DestroyWorld(false);
+		GEngine->DestroyWorldContext(World);
+	};
+	AAesirCampfireStart* Director = World->SpawnActor<AAesirCampfireStart>(CampfireClass);
+	if (!TestNotNull(TEXT("The campfire can be constructed"), Director) ||
+		!TestNotNull(TEXT("The campfire owns its camera child component"), Director->MenuCameraChild.Get()))
+	{
+		return false;
+	}
+	UChildActorComponent* CameraChild = Director->MenuCameraChild;
+	ACameraActor* Camera = Cast<ACameraActor>(CameraChild->GetChildActor());
+	UCameraComponent* CameraComponent = Camera ? Camera->GetCameraComponent() : nullptr;
+	FObjectPropertyBase* CameraProperty = FindFProperty<FObjectPropertyBase>(ACameraActor::StaticClass(), TEXT("CameraComponent"));
+	if (!TestNotNull(TEXT("The child camera is available"), Camera) ||
+		!TestNotNull(TEXT("The child camera component is available"), CameraComponent) ||
+		!TestNotNull(TEXT("The camera's serialized component reference can be inspected"), CameraProperty))
+	{
+		return false;
+	}
+
+	TestTrue(TEXT("The non-root camera component participates in editor Delete/Undo"),
+		CameraComponent->HasAnyFlags(RF_Transactional));
+
+	{
+		// Delete/Undo can restore the child actor before its serialized component
+		// reference. Reproduce that exact intermediate state deterministically.
+		CameraProperty->SetObjectPropertyValue_InContainer(Camera, nullptr);
+		ON_SCOPE_EXIT { CameraProperty->SetObjectPropertyValue_InContainer(Camera, CameraComponent); };
+		TestTrue(TEXT("The restored child actor is valid while its camera component is absent"),
+			IsValid(Camera) && Camera->GetCameraComponent() == nullptr);
+		Director->OnConstruction(Director->GetActorTransform());
+		TestNull(TEXT("An incomplete child camera is not published to menu flow"),
+			ReadObjectProperty<ACameraActor>(Director, TEXT("MenuCamera")));
+	}
+	CameraComponent->SetFieldOfView(73.0f);
+	Director->OnConstruction(Director->GetActorTransform());
+	TestEqual(TEXT("Construction recovers the menu camera after its component is restored"),
+		ReadObjectProperty<ACameraActor>(Director, TEXT("MenuCamera")), Camera);
+	TestEqual(TEXT("The recovered camera receives the menu field of view"), CameraComponent->FieldOfView, 50.0f);
+
+	{
+		TGuardValue<TObjectPtr<UChildActorComponent>> MissingCameraChild(Director->MenuCameraChild, nullptr);
+		Director->OnConstruction(Director->GetActorTransform());
+		TestNull(TEXT("A temporarily absent child component clears the menu camera"),
+			ReadObjectProperty<ACameraActor>(Director, TEXT("MenuCamera")));
+	}
+	Director->OnConstruction(Director->GetActorTransform());
+	TestEqual(TEXT("Construction recovers after the child component reference is restored"),
+		ReadObjectProperty<ACameraActor>(Director, TEXT("MenuCamera")), Camera);
+	TestNotNull(TEXT("The recovered child camera still owns a usable component"), Camera->GetCameraComponent());
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAesirMenuWidgetActionsTest, "Aesir.Menu.WidgetActions",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
@@ -729,13 +825,23 @@ private:
 	{
 		ACharacter* Character = Cast<ACharacter>(Controller->GetPawn());
 		UAnimInstance* Anim = Character ? Character->GetMesh()->GetAnimInstance() : nullptr;
-		UAnimMontage* Montage = Anim ? Anim->GetCurrentActiveMontage() : nullptr;
+		UAnimMontage* Montage = ReadObject<UAnimMontage>(Campfire, bStandUp ? TEXT("StandUpMontage") : TEXT("MenuLoopMontage"));
+		const FAnimMontageInstance* Instance = Anim && Montage ? Anim->GetInstanceForMontage(Montage) : nullptr;
 		UAnimSequence* ExpectedAnimation = bStandUp ? Campfire->StandUpAnimation.Get() : Campfire->MenuSitLoopAnimation.Get();
-		if (!Montage || !ExpectedAnimation || Montage->GetFirstAnimReference() != ExpectedAnimation ||
+		// Active-montage queries exclude blend-out, before the stand-up end delegate releases gameplay.
+		const bool bPlaying = Instance && Instance->IsValid() && Instance->IsActive() && Instance->IsPlaying();
+		const bool bFinishingStandUp = bStandUp && Instance && Instance->IsValid() &&
+			Instance->IsStopped() && !Instance->GetBlend().IsComplete();
+		if (!Anim || !Montage || !ExpectedAnimation || Montage->GetFirstAnimReference() != ExpectedAnimation ||
+			(!bPlaying && !bFinishingStandUp) ||
 			Anim->RootMotionMode != ERootMotionMode::IgnoreRootMotion)
 		{
-			Fail(FString::Printf(TEXT("The real player is not playing the expected %s montage with root motion suppressed."),
-				bStandUp ? TEXT("stand-up") : TEXT("seated loop")));
+			Fail(FString::Printf(TEXT("The real player is not playing or finishing the expected %s montage with root motion suppressed: montage=%s, animation=%s, expected=%s, instance=%d, playing=%d, stopped=%d, blendComplete=%d, rootMotionMode=%d."),
+				bStandUp ? TEXT("stand-up") : TEXT("seated loop"), *GetNameSafe(Montage),
+				*GetNameSafe(Montage ? Montage->GetFirstAnimReference() : nullptr), *GetNameSafe(ExpectedAnimation),
+				Instance ? Instance->GetInstanceID() : INDEX_NONE, Instance && Instance->IsPlaying(),
+				Instance && Instance->IsStopped(), Instance && Instance->GetBlend().IsComplete(),
+				Anim ? static_cast<int32>(Anim->RootMotionMode.GetValue()) : INDEX_NONE));
 			return false;
 		}
 		return true;

@@ -51,16 +51,34 @@
 
 ## 营火与相机
 
+2026-10-20 已把两套素材接入并保存到现有营火 BP，新进程重编译、Main 实例检查与实机菜单流程均通过。具体证据见文末本次增量记录。
+
 在 `BP_AesirCampfireStart` 的组件面板中调整：
 
 - `MenuCamera`：菜单构图的位置与旋转；当前 C++ 构建时将相机 FOV 设为 50。
-- `FlameCard` / `FlameCardCross`：两张交叉火焰面片；用 `Flame Height` 调整体火焰高度。
+- `CampfireScannedBase`：导入的 Quixel Campfire 扫描模型；相对位置与缩放可在组件 Details 中调整。
+- `CampfireEmissionSurface`：隐藏的粒子采样圆盘，使用 Epic `SM_Disk` 的本地副本，开启 CPU Access；它是 `CampfireNiagara` 的父组件。调圆盘缩放可调整火焰覆盖面积，不应删除或重新挂回根组件，否则样例会误选占位圆柱进行采样，导致粒子不能正常运行。
+- `CampfireNiagara`：Epic Niagara Examples Pack 的 `NS_Fire`，在组件 User Parameters 中调整火势和烟量。初始参数为 `Flame Scale = 0.9`、`Lifetime Scale = 0.85`、`Spawn Rate = 220`、`Smoke Spawn Scale = 0.035`；样例中拼写为 `Base Light Intentsity` 的参数设为 0，保留现有 `Firelight` 控制主火光。
+- `FlameCard` / `FlameCardCross`：首版的交叉火焰占位面片，正式素材接入后隐藏；`Flame Height` 只控制这些占位面片，不控制 Niagara。
 - `Firelight`：颜色、位置与衰减范围；亮度用 `Firelight Intensity`，闪烁用 `Animate Firelight`。
-- `Firewood` / `StoneRing`：引擎基础几何体组成的临时木柴和石圈。可换 Mesh/材质；实例阵列由 C++ Construction 重建，逐个移动实例不会长期保留。要自由摆放正式木石，可隐藏占位组件，新增自己的 Mesh 组件。
+- `Firewood` / `StoneRing`：引擎基础几何体组成的临时木柴和石圈，正式素材接入后隐藏。实例阵列仍由 C++ Construction 重建；正式模型使用独立组件，不会被这段占位逻辑重置。
 
-本地可复用素材为 `/Game/CustomAssets/FX/Candles_FX/SM_FlameCard_01_N1` 蜡烛火焰面片；**尚无已确认可直接使用的完整营火 Niagara 系统**。本轮面片加基础木石用于验证菜单，最终火焰、烟、火星、木柴与音效仍需美术替换。C++ 不硬编码依赖该第三方素材，缺失时仍保留几何框架。
+用户已导入 [Quixel Campfire](https://www.fab.com/listings/7e84e0a2-e57a-4421-a127-ed747846480c) 与 [Epic Niagara Examples Pack](https://www.fab.com/listings/0e188eca-4e54-4fb2-a9ed-d8b8a565e600)。模型路径为 `/Game/Fab/Megascans/3D/Campfire_uenpfeifa/High/uenpfeifa_tier_1/StaticMeshes/uenpfeifa_tier_1`，粒子路径为 `/Game/NiagaraExamples/FX_Misc/NS_Fire`。后者包含火焰、余烬与烟；原始资产和目录不改写。已有蜡烛面片留作占位回退，C++ 不增加对导入素材的硬编码依赖。此次接入不新增声音。
 
-可选外部素材：[Epic 免费 Niagara Examples Pack](https://www.fab.com/listings/0e188eca-4e54-4fb2-a9ed-d8b8a565e600)。本轮未新增下载依赖，是否替换为其中的火焰效果由后续美术调整决定。
+派生资产位于 `/Game/CustomAssets/Campfire/`：`SM_CampfireEmissionDisk`、`M_MenuCampfireFlames` 和 `MI_MenuCampfireFlames`，沿用原素材的许可与归属，按现有规则留在本地。`CampfireNiagara` 的 `User.Flame Material` 指向该材质实例；它保留样例火焰形状与纹理，把原样例由 Gallery 全局 MPC 驱动的曝光补偿改为局部参数 `Menu Fire Exposure Mix = 1`、`Menu Fire Exposure EV = 0`。当前室外地图曝光约 EV12.8，原材质在这里几乎看不到火焰；局部补偿让火焰清晰可见，不修改全图光照。需微调亮度时打开该 MI 调整 `Menu Fire Exposure EV`，而非提高全场景曝光。
+
+显式接入入口为 [setup_campfire_art.py](../../Scripts/Editor/setup_campfire_art.py)。停止 PIE 后，在编辑器 Python 控制台执行：
+
+```python
+import sys
+from pathlib import Path
+import unreal
+sys.path.insert(0, str(Path(unreal.Paths.project_dir()) / "Scripts" / "Editor"))
+import setup_campfire_art
+setup_campfire_art.install_campfire_art()
+```
+
+该入口创建上述本地派生资产并修改、保存现有营火 BP，首次保存前备份 BP 到 `Saved/StartMenu/CampfireArt/BeforeInstall/`；不保存地图、不改菜单布局、坐起动画或镜头摆位。重复执行保留已创建组件的美术参数，遇到同名的非本脚本组件或不同素材引用会中止。后续自行调整组件即可，不必重跑脚本。通过命令行接入时应先保存并关闭已打开的 UE，避免两个编辑器争用同一个资产。另一台电脑导入相同两套包后运行该脚本，才能重新得到这些本地派生依赖。
 
 场景中只保留一个流程控制器，避免同时放置旧 `BP_AesirLevelFlowDirector` 与新营火 Actor。营火 Actor 关闭 `Is Spatially Loaded`，其 `StartupStreamingSource` 在菜单与相机交接期间维持起点加载，进入探索后交回玩家流送源。此处还未实现按墙缝切换房间的区域流送。
 
@@ -112,4 +130,25 @@ setup_start_menu.install_in_main_at_player_start()
 
 1280×720 实机截图保存在 `Saved/StartMenu/Preview/MainMenu.png` 和 `MainStarted.png`。本轮验收为 Editor/Standalone 功能检查，不是 cooked Windows 包或正式性能验收。队友服务离线时仍有原有 HTTP 连接警告；本轮菜单开始未受其阻塞。
 
-坐姿/起身增量验证待本轮完整编译和自动化/实机检查后更新。画面验收应确认：菜单循环不漂移；起身只播放一次；起身结束前无法移动且 Boss 不启动；起身和镜头交接后恢复移动、HUD 与正常动画；退出 PIE 后重新运行仍可进入坐姿。
+### 本次正式营火素材与坐起流程增量
+
+| 检查 | 2026-10-20 结果与证据 |
+| --- | --- |
+| BP 接入与保存 | 通过；原始 Quixel/Epic 资产保持原样，本地材质和采样盘副本可加载。安装记录：`Saved/StartMenu/CampfireArt/installation.json`。 |
+| 独立进程重新加载、编译、Main 实例检查 | 通过，0 错误、0 警告。确认唯一流程控制器、正式组件可见、四个占位隐藏、CPU 采样盘是 Niagara 父组件、低烟参数及局部曝光材质保存正常；`Saved/Logs/CampfireArtVerifyFinal.log`、`Saved/StartMenu/CampfireArt/verification.json`。 |
+| Editor 编译与菜单自动化 | `AesirWardenEditor Win64 Development` 编译通过；`Aesir.Menu` 共 7 项通过，0 失败、0 警告，覆盖菜单、自然起身、跳过与销毁清理；`Saved/StartMenu/CampfireArt/Automation/index.json`。 |
+| Main 实机菜单 → 起身 → 探索 | 1280×720 Standalone 通过；10 秒内玩家 150 HP 不变、Boss Episode 不启动；起身播放完毕后恢复相机、输入与 HUD。火焰、余烬和少量烟正常可见；`Saved/Logs/CampfireArtFinalSmoke.log`，终局标记 `START_MENU_MAIN_SMOKE_PASS`。 |
+
+本次 1280×720 原始画面保存在 `Saved/StartMenu/CampfireArt/Preview/MainMenu.png`、`MainStandingUp.png`、`MainStarted.png`。首次流程检查在起身混出阶段误判：`GetCurrentActiveMontage()` 会提前排除正混出的 Montage，而演出结束委托尚未触发；本次仅修正 smoke 检查为验证演出拥有的实际 Montage 实例，继续保留输入与 Boss 门禁检查，没有改动生产动画流程。
+
+场景仍有 Lumen cached-lighting pre-exposure 的原有提示，队友推理服务离线时仍有 HTTP 连接警告；它们未阻塞本次营火与菜单流程检查。尚未完成 cooked Windows 包、正式帧率验收、篝火音效或最终构图美术确认。
+
+### 删除后撤销的构造崩溃修复
+
+2026-10-20 14:44 的编辑器日志确认触发步骤为删除营火 Actor 后执行 `TRANSACTION UNDO`。撤销恢复期间，`ACameraActor` 已恢复为有效对象，但其 `CameraComponent` 引用为空；原 `OnConstruction()` 仅检查 Camera Actor，再直接设置 FOV，因此空指针崩溃。进一步在独立编辑器进程复现确认：UE 5.8 的 ChildActorComponent 为子 Actor 和根组件设置了事务标记，却没有为 Camera Actor 的非根原生 CameraComponent 设置该标记，删除撤销后相机组件仍可能缺失。该问题与火焰参数或新增补光灯无关。
+
+修复将菜单相机刷新集中为 `RefreshMenuCamera()`：同时检查 ChildActorComponent、Camera Actor 和 CameraComponent，组件不可用时暂不向流程发布菜单相机；在编辑器世界为有效 CameraComponent 补上 `RF_Transactional`，使其参与删除撤销。`PostRegisterAllComponents()` 也刷新相机，覆盖已保存地图加载后直接删除的情况；构造和 BeginPlay 保留刷新。此处不重建 Child Actor、不调用 Modify、不保存资产。占位组件与火光更新也补上恢复期间的有效性检查，保留已有材质、火焰参数、补光与镜头配置。
+
+新增 `Aesir.Menu.ConstructionRecovery.Native` 与 `.Blueprint` 两项回归，检查 CameraComponent 的事务标记，并精确模拟有效 Camera Actor 的 CameraComponent 暂缺，以及 ChildActorComponent 暂缺，随后还原并验证相机/FOV 恢复。`AesirWardenEditor Win64 Development` 完整编译与链接通过；`Aesir.Menu` 共 9 项通过，0 失败、0 警告，报告为 `Saved/StartMenu/CrashFix/Automation/index.json`。另在完整编辑器的临时 Entry 世界中，对原生类和实际 BP 分别连续执行 3 次删除、撤销，共 6 次均不崩溃，CameraComponent 与 MenuCamera 引用正常恢复；记录为 `Saved/StartMenu/CrashFix/delete_undo.json`、`Saved/Logs/CampfireDeleteUndoFullEditor.log`。
+
+对 `/Game/Main` 中已保存的营火实例另做 3 次真实删除、撤销，相机组件与菜单相机引用均恢复，Actor 及美术组件的变换、灯光颜色和强度保持一致；记录为 `Saved/StartMenu/CrashFix/saved_main_delete_undo.json`、`Saved/Logs/CampfireSavedMainUndo.log`。使用最终 DLL 的 Main Standalone 菜单 → 起身 → 探索检查也通过，玩家 150 HP 保持 10 秒、Boss 保持等待、起身后输入与 HUD 恢复；日志为 `Saved/Logs/CampfireCrashFixMainSmoke.log`，终局标记 `START_MENU_MAIN_SMOKE_PASS`。以上独立检查均未保存资产，Main、营火 BP 和火焰 MI 的 SHA256 与用户关闭编辑器后的记录相同。
