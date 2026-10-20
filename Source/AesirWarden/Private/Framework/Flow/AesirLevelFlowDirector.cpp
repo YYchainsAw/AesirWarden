@@ -135,6 +135,7 @@ void AAesirLevelFlowDirector::PresentMainMenu()
 	PlayerControllerRef->SetInputMode(InputMode);
 	PlayerControllerRef->FlushPressedKeys();
 	PlayerControllerRef->SetShowMouseCursor(true);
+	PrepareMainMenuPresentation();
 	SetFlowState(EAesirLevelFlowState::MainMenu);
 	RefreshMenuStreamingState();
 	GetWorldTimerManager().SetTimer(MenuStreamingTimerHandle, this,
@@ -248,12 +249,47 @@ bool AAesirLevelFlowDirector::RequestStartGame()
 	// Keep UI-only routing throughout the opening: movement locks alone do not block GAS attack inputs.
 	PlayerControllerRef->SetInputMode(FInputModeUIOnly());
 	PlayerControllerRef->FlushPressedKeys();
+	// Set the gate before notifying Blueprint listeners, which may call completion/skip synchronously.
+	bOpeningPresentationPending = true;
 	SetFlowState(EAesirLevelFlowState::OpeningCinematic);
 	if (CurrentState != EAesirLevelFlowState::OpeningCinematic || bCameraHandoffStarted || IsActorBeingDestroyed())
 	{
 		return true;
 	}
 
+	if (!BeginOpeningPresentation())
+	{
+		CompleteOpeningPresentation();
+	}
+	return true;
+}
+
+void AAesirLevelFlowDirector::PrepareMainMenuPresentation()
+{
+}
+
+bool AAesirLevelFlowDirector::BeginOpeningPresentation()
+{
+	return false;
+}
+
+void AAesirLevelFlowDirector::FinishOpeningPresentation(bool bSkipped)
+{
+}
+
+void AAesirLevelFlowDirector::CompleteOpeningPresentation()
+{
+	if (CurrentState != EAesirLevelFlowState::OpeningCinematic || !bOpeningPresentationPending || IsActorBeingDestroyed())
+	{
+		return;
+	}
+	bOpeningPresentationPending = false;
+	FinishOpeningPresentation(false);
+	PlayOpeningSequenceOrHandoff();
+}
+
+void AAesirLevelFlowDirector::PlayOpeningSequenceOrHandoff()
+{
 	if (IsValid(OpeningSequenceActor))
 	{
 		ActiveOpeningPlayer = OpeningSequenceActor->GetSequencePlayer();
@@ -275,19 +311,18 @@ bool AAesirLevelFlowDirector::RequestStartGame()
 				ActiveOpeningPlayer->GetStartTime().Time, EUpdatePositionMethod::Jump));
 			if (CurrentState != EAesirLevelFlowState::OpeningCinematic || bCameraHandoffStarted || IsActorBeingDestroyed())
 			{
-				return true;
+				return;
 			}
 			ActiveOpeningPlayer->OnFinished.AddUniqueDynamic(this, &AAesirLevelFlowDirector::HandleOpeningSequenceFinished);
 			ActiveOpeningPlayer->OnStop.AddUniqueDynamic(this, &AAesirLevelFlowDirector::HandleOpeningSequenceFinished);
 			ActiveOpeningPlayer->Play();
-			return true;
+			return;
 		}
 		UE_LOG(LogAesirWarden, Warning, TEXT("Level flow: opening sequence has no initialized player; using camera blend."));
 		ActiveOpeningPlayer = nullptr;
 	}
 
 	BeginGameplayCameraHandoff();
-	return true;
 }
 
 void AAesirLevelFlowDirector::HandleOpeningSequenceFinished()
@@ -297,7 +332,7 @@ void AAesirLevelFlowDirector::HandleOpeningSequenceFinished()
 
 void AAesirLevelFlowDirector::BeginGameplayCameraHandoff()
 {
-	if (CurrentState != EAesirLevelFlowState::OpeningCinematic || bCameraHandoffStarted)
+	if (CurrentState != EAesirLevelFlowState::OpeningCinematic || bCameraHandoffStarted || bOpeningPresentationPending)
 	{
 		return;
 	}
@@ -352,7 +387,7 @@ void AAesirLevelFlowDirector::CompleteGameplayCameraHandoff()
 
 bool AAesirLevelFlowDirector::EnterExploration()
 {
-	if (!bInitialized || CurrentState != EAesirLevelFlowState::OpeningCinematic ||
+	if (!bInitialized || CurrentState != EAesirLevelFlowState::OpeningCinematic || bOpeningPresentationPending ||
 		!RefreshPlayerReferences() || !IsStartupStreamingReady())
 	{
 		return false;
@@ -385,6 +420,8 @@ bool AAesirLevelFlowDirector::SkipOpeningCinematic()
 	{
 		return false;
 	}
+	bOpeningPresentationPending = false;
+	FinishOpeningPresentation(true);
 	if (IsValid(ActiveOpeningPlayer))
 	{
 		ActiveOpeningPlayer->GoToEndAndStop();
@@ -449,6 +486,8 @@ void AAesirLevelFlowDirector::UnbindOpeningSequence()
 
 void AAesirLevelFlowDirector::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	bOpeningPresentationPending = false;
+	FinishOpeningPresentation(true);
 	GetWorldTimerManager().ClearTimer(InitializationTimerHandle);
 	GetWorldTimerManager().ClearTimer(CameraHandoffTimerHandle);
 	GetWorldTimerManager().ClearTimer(MenuStreamingTimerHandle);

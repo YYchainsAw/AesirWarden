@@ -4,9 +4,13 @@
 
 #include "Misc/AutomationTest.h"
 
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
+#include "Animation/AnimSequence.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/TextBlock.h"
 #include "Components/WorldPartitionStreamingSourceComponent.h"
 #include "Engine/Engine.h"
@@ -17,6 +21,8 @@
 #include "EngineUtils.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/Flow/AesirCampfireStart.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Slate/SceneViewport.h"
@@ -76,6 +82,53 @@ public:
 		GameInstance->RemoveFromRoot();
 	}
 
+	ACharacter* CreateAnimatedCharacter(FAutomationTestBase* Test)
+	{
+		UClass* PlayerClass = LoadClass<ACharacter>(nullptr,
+			TEXT("/Game/Aesir/Characters/Player/BP_AesirPlayerCharacter.BP_AesirPlayerCharacter_C"));
+		const ACharacter* PlayerDefaults = PlayerClass ? PlayerClass->GetDefaultObject<ACharacter>() : nullptr;
+		if (!Test->TestNotNull(TEXT("The project player Blueprint is available"), PlayerDefaults))
+		{
+			return nullptr;
+		}
+
+		// Use the real player mesh/AnimBP on a plain Character. GAS initialization,
+		// abilities and Blueprint input setup are outside this animation flow test.
+		ACharacter* Character = World->SpawnActor<ACharacter>();
+		if (!Test->TestNotNull(TEXT("An animated Character can be spawned"), Character))
+		{
+			return nullptr;
+		}
+		USkeletalMeshComponent* Mesh = Character->GetMesh();
+		USkeletalMeshComponent* SourceMesh = PlayerDefaults->GetMesh();
+		Mesh->SetSkeletalMeshAsset(SourceMesh->GetSkeletalMeshAsset());
+		Mesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+		Mesh->SetAnimInstanceClass(SourceMesh->GetAnimClass());
+		Mesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+		Character->GetCharacterMovement()->DisableMovement();
+		Controller->Possess(Character);
+		Pawn->Destroy();
+		Pawn = Character;
+		if (!Test->TestNotNull(TEXT("The real player AnimBP initializes on the Character"), Mesh->GetAnimInstance()))
+		{
+			return nullptr;
+		}
+		return Character;
+	}
+
+	void AdvanceAnimation(USkeletalMeshComponent* Mesh, const float DeltaSeconds)
+	{
+		// This standalone fixture has no rendered scene. Explicitly advance the real
+		// montage and dispatch its queued completion delegate just as a mesh tick does.
+		World->Tick(LEVELTICK_All, DeltaSeconds);
+		Mesh->TickAnimation(DeltaSeconds, false);
+		Mesh->RefreshBoneTransforms();
+		if (UAnimInstance* Anim = Mesh->GetAnimInstance())
+		{
+			Anim->DispatchQueuedAnimEvents();
+		}
+	}
+
 	UGameInstance* GameInstance = nullptr;
 	UWorld* World = nullptr;
 	UGameViewportClient* Viewport = nullptr;
@@ -96,6 +149,12 @@ UClass* LoadMenuClass()
 {
 	return LoadClass<UAesirMainMenuWidget>(nullptr,
 		TEXT("/Game/Aesir/UI/Menus/WBP_CampfireMainMenu.WBP_CampfireMainMenu_C"));
+}
+
+bool IsWaitingForStandUp(AAesirCampfireStart* Director)
+{
+	const FBoolProperty* Waiting = FindFProperty<FBoolProperty>(Director->GetClass(), TEXT("bWaitingForStandUpAnimation"));
+	return Waiting && Waiting->GetPropertyValue_InContainer(Director);
 }
 
 // UWidget::RemoveFromParent is an existing parameterless UFUNCTION. Using it as a
@@ -204,6 +263,134 @@ private:
 	UAesirMainMenuWidget* Menu = nullptr;
 	bool bDestroyFromMenu;
 	bool bStarted = false;
+	int32 Frames = 0;
+};
+
+class FExerciseSitFlow final : public IAutomationLatentCommand
+{
+public:
+	FExerciseSitFlow(FAutomationTestBase* InTest, TSharedPtr<FMenuWorld> InFixture,
+		AAesirCampfireStart* InDirector, ACharacter* InCharacter, const FString& InCompletion)
+		: Test(InTest), Fixture(MoveTemp(InFixture)), Director(InDirector), Character(InCharacter), Completion(InCompletion)
+	{
+		InitialTransform = Character->GetActorTransform();
+	}
+
+	virtual bool Update() override
+	{
+		USkeletalMeshComponent* Mesh = Character->GetMesh();
+		UAnimInstance* Anim = Mesh->GetAnimInstance();
+		Fixture->AdvanceAnimation(Mesh, 0.1f);
+		if (++Frames > 160)
+		{
+			Test->AddError(TEXT("The sit/stand-up flow did not finish within 160 animation ticks."));
+			return true;
+		}
+
+		if (Stage == 0)
+		{
+			if (Director->GetFlowState() != EAesirLevelFlowState::MainMenu)
+			{
+				return false;
+			}
+			UAnimMontage* Loop = Anim->GetCurrentActiveMontage();
+			if (!Test->TestNotNull(TEXT("The menu plays a real player montage"), Loop))
+			{
+				return true;
+			}
+			Test->TestEqual(TEXT("The menu montage uses AS_SSH_Sit_Loop"),
+				Loop->GetFirstAnimReference(), static_cast<UAnimSequenceBase*>(Director->MenuSitLoopAnimation.Get()));
+			Test->TestEqual(TEXT("The existing Animation Blueprint remains active"),
+				Mesh->GetAnimationMode(), EAnimationMode::AnimationBlueprint);
+			Test->TestEqual(TEXT("Menu animation consumes root motion without moving the player"),
+				Anim->RootMotionMode.GetValue(), ERootMotionMode::IgnoreRootMotion);
+			Test->TestEqual(TEXT("The menu keeps animation ticking outside the camera view"),
+				Mesh->VisibilityBasedAnimTickOption, EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones);
+			LoopMontage = Loop;
+			// Cross a complete source-animation boundary to catch a non-looping menu.
+			Anim->Montage_SetPosition(Loop, FMath::Max(0.0f, Director->MenuSitLoopAnimation->GetPlayLength() - 0.05f));
+			Stage = 1;
+			return false;
+		}
+
+		if (Stage == 1)
+		{
+			Test->TestTrue(TEXT("The seated montage keeps playing after its first loop"), Anim->Montage_IsPlaying(LoopMontage.Get()));
+			Test->TestTrue(TEXT("The seated loop leaves the player capsule in place"),
+				Character->GetActorTransform().Equals(InitialTransform, 0.01f));
+			if (!Test->TestTrue(TEXT("Start is accepted after the menu loop"), Director->RequestStartGame()))
+			{
+				return true;
+			}
+			Test->TestTrue(TEXT("Start waits for the stand-up montage"), IsWaitingForStandUp(Director));
+			Test->TestEqual(TEXT("Start remains in the opening while the player rises"),
+				Director->GetFlowState(), EAesirLevelFlowState::OpeningCinematic);
+			Test->TestTrue(TEXT("Gameplay input stays blocked while the player rises"), Fixture->Viewport->IgnoreInput());
+			Test->TestFalse(TEXT("A direct exploration request cannot bypass stand-up"), Director->EnterExploration());
+			Test->TestFalse(TEXT("Repeated Start cannot restart stand-up"), Director->RequestStartGame());
+			UAnimMontage* StandUp = Anim->GetCurrentActiveMontage();
+			if (!Test->TestNotNull(TEXT("Start plays a stand-up montage"), StandUp))
+			{
+				return true;
+			}
+			Test->TestEqual(TEXT("The stand-up montage uses AS_SSH_Sit_End"),
+				StandUp->GetFirstAnimReference(), static_cast<UAnimSequenceBase*>(Director->StandUpAnimation.Get()));
+			StandUpMontage = StandUp;
+
+			if (Completion == TEXT("Destroy"))
+			{
+				Director->Destroy();
+				Test->TestFalse(TEXT("Destroy cancels a pending stand-up montage"), Anim->Montage_IsPlaying(StandUp));
+				Test->TestEqual(TEXT("Destroy restores the previous root-motion mode"),
+					Anim->RootMotionMode.GetValue(), ERootMotionMode::RootMotionFromEverything);
+				Test->TestEqual(TEXT("Destroy restores the previous mesh animation tick policy"),
+					Mesh->VisibilityBasedAnimTickOption, EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered);
+				Test->TestFalse(TEXT("Destroy releases the startup input block"), Fixture->Viewport->IgnoreInput());
+				return true;
+			}
+			if (Completion == TEXT("Skip"))
+			{
+				Test->TestTrue(TEXT("Skip is accepted while stand-up is pending"), Director->SkipOpeningCinematic());
+				Test->TestFalse(TEXT("Skip clears the stand-up gate"), IsWaitingForStandUp(Director));
+				Test->TestFalse(TEXT("Skip stops its owned stand-up montage"), Anim->Montage_IsPlaying(StandUp));
+			}
+			Stage = 2;
+			return false;
+		}
+
+		if (Director->GetFlowState() != EAesirLevelFlowState::Exploration)
+		{
+			if (IsWaitingForStandUp(Director))
+			{
+				Test->TestTrue(TEXT("The player remains input locked while the stand-up gate is pending"), Fixture->Viewport->IgnoreInput());
+				Test->TestFalse(TEXT("Exploration remains guarded throughout stand-up"), Director->EnterExploration());
+			}
+			return false;
+		}
+		Test->TestFalse(TEXT("Exploration has no remaining stand-up wait"), IsWaitingForStandUp(Director));
+		Test->TestFalse(TEXT("Stand-up no longer plays after gameplay begins"), Anim->Montage_IsPlaying(StandUpMontage.Get()));
+		Test->TestEqual(TEXT("Gameplay restores the AnimBP's previous root-motion mode"),
+			Anim->RootMotionMode.GetValue(), ERootMotionMode::RootMotionFromEverything);
+		Test->TestEqual(TEXT("Gameplay restores the previous mesh animation tick policy"),
+			Mesh->VisibilityBasedAnimTickOption, EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered);
+		Test->TestTrue(TEXT("Menu and stand-up do not displace the player capsule"),
+			Character->GetActorTransform().Equals(InitialTransform, 0.01f));
+		Test->TestFalse(TEXT("Gameplay input is enabled after camera handoff"), Fixture->Viewport->IgnoreInput());
+		Test->TestEqual(TEXT("Gameplay camera returns to the same animated player"),
+			Fixture->Controller->GetViewTarget(), static_cast<AActor*>(Character));
+		return true;
+	}
+
+private:
+	FAutomationTestBase* Test;
+	TSharedPtr<FMenuWorld> Fixture;
+	AAesirCampfireStart* Director;
+	ACharacter* Character;
+	FString Completion;
+	FTransform InitialTransform;
+	TWeakObjectPtr<UAnimMontage> LoopMontage;
+	TWeakObjectPtr<UAnimMontage> StandUpMontage;
+	int32 Stage = 0;
 	int32 Frames = 0;
 };
 
@@ -323,6 +510,9 @@ bool FAesirCampfireMenuFlowTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// These existing tests deliberately use a plain APawn and isolate menu/input
+	// behavior. The animated Character path is covered by Aesir.Menu.SitFlow.
+	Director->bUsePlayerSitAnimations = false;
 	if (Parameters == TEXT("Blueprint"))
 	{
 		TestEqual(TEXT("The campfire is configured to use the editable UI"),
@@ -344,6 +534,54 @@ bool FAesirCampfireMenuFlowTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FAesirCampfireSitFlowTest, "Aesir.Menu.SitFlow",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+void FAesirCampfireSitFlowTest::GetTests(TArray<FString>& OutBeautifiedNames, TArray<FString>& OutTestCommands) const
+{
+	for (const FString& Completion : { FString(TEXT("Natural")), FString(TEXT("Skip")), FString(TEXT("Destroy")) })
+	{
+		OutBeautifiedNames.Add(Completion);
+		OutTestCommands.Add(Completion);
+	}
+}
+
+bool FAesirCampfireSitFlowTest::RunTest(const FString& Parameters)
+{
+	using namespace AesirMenuTests;
+	TSharedPtr<FMenuWorld> Fixture = MakeShared<FMenuWorld>();
+	if (!TestNotNull(TEXT("The test has a local controller"), Fixture->Controller))
+	{
+		return false;
+	}
+	ACharacter* Character = Fixture->CreateAnimatedCharacter(this);
+	if (!Character)
+	{
+		return false;
+	}
+	AAesirCampfireStart* Director = Fixture->World->SpawnActor<AAesirCampfireStart>();
+	if (!TestNotNull(TEXT("The animated campfire can be spawned"), Director))
+	{
+		return false;
+	}
+	TestTrue(TEXT("Menu sit animations are enabled by default"), Director->bUsePlayerSitAnimations);
+	if (!TestNotNull(TEXT("The default seated loop asset exists"), Director->MenuSitLoopAnimation.LoadSynchronous()) ||
+		!TestNotNull(TEXT("The default stand-up asset exists"), Director->StandUpAnimation.LoadSynchronous()))
+	{
+		return false;
+	}
+	FFloatProperty* BlendTime = FindFProperty<FFloatProperty>(Director->GetClass(), TEXT("OpeningBlendTime"));
+	if (!TestNotNull(TEXT("The camera blend is configurable"), BlendTime))
+	{
+		return false;
+	}
+	BlendTime->SetPropertyValue_InContainer(Director, 0.05f);
+	Character->GetMesh()->GetAnimInstance()->SetRootMotionMode(ERootMotionMode::RootMotionFromEverything);
+	Director->DispatchBeginPlay();
+	AddCommand(new FExerciseSitFlow(this, Fixture, Director, Character, Parameters));
+	return true;
+}
+
 #endif // WITH_EDITOR && WITH_DEV_AUTOMATION_TESTS
 
 #if WITH_EDITOR && !UE_BUILD_SHIPPING
@@ -351,14 +589,20 @@ bool FAesirCampfireMenuFlowTest::RunTest(const FString& Parameters)
 #include "AesirWarden.h"
 #include "AI/Boss/AesirBossAIController.h"
 #include "AI/Boss/AesirBossTelemetryComponent.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
+#include "Animation/AnimSequence.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Combat/AesirHealthComponent.h"
 #include "Components/Button.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Framework/Flow/AesirCampfireStart.h"
 #include "Framework/Flow/AesirLevelFlowDirector.h"
+#include "GameFramework/Character.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/FileManager.h"
@@ -383,6 +627,7 @@ public:
 	{
 		OutputDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("StartMenu"));
 		MenuScreenshot = OutputDirectory / TEXT("MainMenu.png");
+		StandUpScreenshot = OutputDirectory / TEXT("MainStandingUp.png");
 		StartedScreenshot = OutputDirectory / TEXT("MainStarted.png");
 	}
 
@@ -390,6 +635,7 @@ public:
 	{
 		IFileManager::Get().MakeDirectory(*OutputDirectory, true);
 		IFileManager::Get().Delete(*MenuScreenshot, false, true);
+		IFileManager::Get().Delete(*StandUpScreenshot, false, true);
 		IFileManager::Get().Delete(*StartedScreenshot, false, true);
 		World->GetTimerManager().SetTimer(Timer, FTimerDelegate::CreateSP(AsShared(), &FRun::Tick), 0.25f, true);
 		UE_LOG(LogAesirWarden, Display, TEXT("START_MENU_MAIN_SMOKE_BEGIN: waiting for a ready campfire menu, then observing 10 seconds of idle gameplay."));
@@ -479,6 +725,28 @@ private:
 		return true;
 	}
 
+	bool CheckPlayerAnimation(AAesirCampfireStart* Campfire, APlayerController* Controller, const bool bStandUp)
+	{
+		ACharacter* Character = Cast<ACharacter>(Controller->GetPawn());
+		UAnimInstance* Anim = Character ? Character->GetMesh()->GetAnimInstance() : nullptr;
+		UAnimMontage* Montage = Anim ? Anim->GetCurrentActiveMontage() : nullptr;
+		UAnimSequence* ExpectedAnimation = bStandUp ? Campfire->StandUpAnimation.Get() : Campfire->MenuSitLoopAnimation.Get();
+		if (!Montage || !ExpectedAnimation || Montage->GetFirstAnimReference() != ExpectedAnimation ||
+			Anim->RootMotionMode != ERootMotionMode::IgnoreRootMotion)
+		{
+			Fail(FString::Printf(TEXT("The real player is not playing the expected %s montage with root motion suppressed."),
+				bStandUp ? TEXT("stand-up") : TEXT("seated loop")));
+			return false;
+		}
+		return true;
+	}
+
+	bool IsStandUpPending(AAesirCampfireStart* Campfire) const
+	{
+		const FBoolProperty* Waiting = FindFProperty<FBoolProperty>(Campfire->GetClass(), TEXT("bWaitingForStandUpAnimation"));
+		return Waiting && Waiting->GetPropertyValue_InContainer(Campfire);
+	}
+
 	void Tick()
 	{
 		if (bFinished)
@@ -529,6 +797,12 @@ private:
 		{
 			return;
 		}
+		AAesirCampfireStart* Campfire = Cast<AAesirCampfireStart>(Flow);
+		if (!Campfire || !Campfire->bUsePlayerSitAnimations)
+		{
+			Fail(TEXT("The Main menu smoke test requires an animated campfire startup actor."));
+			return;
+		}
 
 		if (!bStartClicked)
 		{
@@ -560,6 +834,10 @@ private:
 				!Controller->IsMoveInputIgnored() || !Controller->IsLookInputIgnored() || !Controller->bShowMouseCursor)
 			{
 				Fail(TEXT("A ready menu has inconsistent viewport, cursor, or gameplay input locks."));
+				return;
+			}
+			if (!CheckPlayerAnimation(Campfire, Controller, false))
+			{
 				return;
 			}
 			if (bQuitOnly)
@@ -613,18 +891,37 @@ private:
 				return;
 			}
 			Start->OnClicked.Broadcast();
-			if (Flow->GetFlowState() != EAesirLevelFlowState::OpeningCinematic &&
-				Flow->GetFlowState() != EAesirLevelFlowState::Exploration)
+			if (Flow->GetFlowState() != EAesirLevelFlowState::OpeningCinematic || !IsStandUpPending(Campfire) ||
+				!CheckPlayerAnimation(Campfire, Controller, true) || Flow->EnterExploration())
 			{
-				Fail(TEXT("The Start button event did not advance the level flow."));
+				Fail(TEXT("Start did not enter the guarded stand-up opening before exploration."));
 				return;
 			}
 			bStartClicked = true;
+			StartClickedAt = Now;
+			UE_LOG(LogAesirWarden, Display, TEXT("START_MENU_MAIN_SMOKE_STAND_UP: real player entered Sit_End; direct exploration is blocked."));
 			return;
 		}
 
 		if (Flow->GetFlowState() != EAesirLevelFlowState::Exploration)
 		{
+			if (IsStandUpPending(Campfire))
+			{
+				if (!CheckPlayerAnimation(Campfire, Controller, true) || !CheckIdleCombat())
+				{
+					return;
+				}
+				if (!Viewport->IgnoreInput() || Flow->EnterExploration())
+				{
+					Fail(TEXT("Stand-up released gameplay before its montage completed."));
+					return;
+				}
+				if (!bStandUpScreenshotRequested && Now - StartClickedAt >= 0.5)
+				{
+					FScreenshotRequest::RequestScreenshot(StandUpScreenshot, true, false);
+					bStandUpScreenshotRequested = true;
+				}
+			}
 			return;
 		}
 		if (!bStartedScreenshotRequested)
@@ -651,8 +948,8 @@ private:
 		}
 		if (Now - ExplorationAt >= 2.0 && FPaths::FileExists(StartedScreenshot))
 		{
-			UE_LOG(LogAesirWarden, Display, TEXT("START_MENU_MAIN_SMOKE_PASS: %d BossController(s) stayed idle; health %.2f unchanged for 10 seconds; gameplay input/HUD restored; screenshots: %s and %s."),
-				BossesObserved.Num(), InitialHealth, *MenuScreenshot, *StartedScreenshot);
+			UE_LOG(LogAesirWarden, Display, TEXT("START_MENU_MAIN_SMOKE_PASS: %d BossController(s) stayed idle; health %.2f unchanged for 10 seconds; seated loop and guarded stand-up verified; gameplay input/HUD restored; screenshots: %s, %s and %s."),
+				BossesObserved.Num(), InitialHealth, *MenuScreenshot, *StandUpScreenshot, *StartedScreenshot);
 			Finish();
 		}
 	}
@@ -666,9 +963,11 @@ private:
 	FTimerHandle Timer;
 	FString OutputDirectory;
 	FString MenuScreenshot;
+	FString StandUpScreenshot;
 	FString StartedScreenshot;
 	double StartedAt;
 	double MenuReadyAt = 0.0;
+	double StartClickedAt = 0.0;
 	double ExplorationAt = 0.0;
 	double QuitRequestedAt = 0.0;
 	float InitialHealth = 0.0f;
@@ -676,6 +975,7 @@ private:
 	bool bQuitRequested = false;
 	bool bStartClicked = false;
 	bool bMenuScreenshotRequested = false;
+	bool bStandUpScreenshotRequested = false;
 	bool bStartedScreenshotRequested = false;
 	bool bFinished = false;
 };

@@ -41,11 +41,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Aesir|Level Flow")
 	EAesirLevelFlowState GetFlowState() const { return CurrentState; }
 
-	/** Complete the opening and restore gameplay control. Safe against duplicate callbacks. */
+	/** Complete the opening and restore gameplay control. Rejected while pawn presentation is pending. */
 	UFUNCTION(BlueprintCallable, Category = "Aesir|Level Flow")
 	bool EnterExploration();
 
-	/** Evaluate the sequence's end pose before using the same camera handoff as natural completion. */
+	/** Cancel pawn presentation, evaluate any active sequence's end, and use the normal camera handoff. */
 	UFUNCTION(BlueprintCallable, Category = "Aesir|Level Flow")
 	bool SkipOpeningCinematic();
 
@@ -59,6 +59,13 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	/** Native presentation hooks run on the possessed pawn without replacing its AnimInstance. */
+	virtual void PrepareMainMenuPresentation();
+	virtual bool BeginOpeningPresentation();
+	virtual void FinishOpeningPresentation(bool bSkipped);
+	bool IsOpeningPresentationPending() const { return bOpeningPresentationPending; }
+	void CompleteOpeningPresentation();
 
 	/** Bind the menu's Blueprint dispatcher here, before the widget is added to the viewport. */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Aesir|Level Flow")
@@ -124,6 +131,7 @@ private:
 	void AcquireInputLocks();
 	void ReleaseInputLocks();
 	void BeginGameplayCameraHandoff();
+	void PlayOpeningSequenceOrHandoff();
 	void CompleteGameplayCameraHandoff();
 	void UnbindOpeningSequence();
 
@@ -150,6 +158,7 @@ private:
 	bool bOwnsLevelFlow = false;
 	bool bOwnsInputLocks = false;
 	bool bCameraHandoffStarted = false;
+	bool bOpeningPresentationPending = false;
 	bool bWaitingForGameplayStreaming = false;
 	bool bMenuFocusInitialized = false;
 	TMap<TWeakObjectPtr<UUserWidget>, ESlateVisibility> HiddenGameplayHUD;

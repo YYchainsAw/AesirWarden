@@ -2,6 +2,11 @@
 
 #include "Framework/Flow/AesirCampfireStart.h"
 
+#include "AesirWarden.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
+#include "Animation/AnimSequence.h"
+#include "Animation/Skeleton.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Components/ChildActorComponent.h"
@@ -9,13 +14,21 @@
 #include "Components/PointLightComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/SkeletalMesh.h"
 #include "Engine/World.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/PlayerController.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
 
 AAesirCampfireStart::AAesirCampfireStart()
 {
+	MenuSitLoopAnimation = TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(
+		TEXT("/Game/Aesir/Animations/Player/Actions/AS_SSH_Sit_Loop.AS_SSH_Sit_Loop")));
+	StandUpAnimation = TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(
+		TEXT("/Game/Aesir/Animations/Player/Actions/AS_SSH_Sit_End.AS_SSH_Sit_End")));
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.TickInterval = 0.08f;
 
@@ -130,4 +143,167 @@ void AAesirCampfireStart::Tick(float DeltaSeconds)
 	const float Time = GetWorld()->GetTimeSeconds();
 	const float Flicker = 1.0f + 0.06f * FMath::Sin(Time * 9.7f) + 0.035f * FMath::Sin(Time * 17.3f);
 	Firelight->SetIntensity(FirelightIntensity * Flicker);
+}
+
+void AAesirCampfireStart::PrepareMainMenuPresentation()
+{
+	ClearPlayerPresentation();
+	if (!bUsePlayerSitAnimations)
+	{
+		return;
+	}
+	ACharacter* Character = Cast<ACharacter>(PlayerPawnRef);
+	USkeletalMeshComponent* Mesh = Character ? Character->GetMesh() : nullptr;
+	UAnimInstance* AnimInstance = Mesh ? Mesh->GetAnimInstance() : nullptr;
+	if (!AnimInstance)
+	{
+		// A non-character pawn can still use the menu and its original immediate handoff.
+		return;
+	}
+	UAnimSequence* SitLoop = MenuSitLoopAnimation.LoadSynchronous();
+	LoadedStandUpAnimation = StandUpAnimation.LoadSynchronous();
+	if (!SitLoop)
+	{
+		UE_LOG(LogAesirWarden, Warning, TEXT("Campfire: Menu Sit Loop Animation is missing; using the player's normal idle pose."));
+		return;
+	}
+
+	PresentationMesh = Mesh;
+	PresentationAnimInstance = AnimInstance;
+	SavedRootMotionMode = static_cast<uint8>(AnimInstance->RootMotionMode.GetValue());
+	SavedVisibilityTickOption = static_cast<uint8>(Mesh->VisibilityBasedAnimTickOption);
+	// Extract and discard root motion: repeated sit cycles must not move the capsule.
+	AnimInstance->SetRootMotionMode(ERootMotionMode::IgnoreRootMotion);
+	// End delegates must advance even if an authored menu camera cannot see the player.
+	Mesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+	MenuLoopMontage = PlayPlayerPresentationAnimation(SitLoop, 1.0f, 0.0f);
+	if (!MenuLoopMontage)
+	{
+		ClearPlayerPresentation();
+		return;
+	}
+	// Dynamic montages have one Default section. Link it to itself for an indefinite menu loop.
+	AnimInstance->Montage_SetNextSection(TEXT("Default"), TEXT("Default"), MenuLoopMontage);
+	UE_LOG(LogAesirWarden, Display, TEXT("Campfire: looping %s on the possessed player via %s."),
+		*SitLoop->GetName(), *PlayerAnimationSlot.ToString());
+}
+
+UAnimMontage* AAesirCampfireStart::PlayPlayerPresentationAnimation(
+	UAnimSequence* Animation, float PlayRate, float BlendInTime)
+{
+	UAnimInstance* AnimInstance = PresentationAnimInstance.Get();
+	USkeletalMeshComponent* Mesh = PresentationMesh.Get();
+	if (!AnimInstance || !Mesh || !Animation || PlayerAnimationSlot.IsNone() ||
+		!Animation->GetSkeleton() || !Animation->GetSkeleton()->IsCompatibleMesh(Mesh->GetSkeletalMeshAsset()))
+	{
+		UE_LOG(LogAesirWarden, Warning, TEXT("Campfire: animation %s cannot play on the player's skeleton/slot; falling back to normal animation."),
+			*GetNameSafe(Animation));
+		return nullptr;
+	}
+	return AnimInstance->PlaySlotAnimationAsDynamicMontage(Animation, PlayerAnimationSlot,
+		FMath::Max(0.0f, BlendInTime), FMath::Max(0.0f, SitBlendTime), PlayRate, 1);
+}
+
+bool AAesirCampfireStart::BeginOpeningPresentation()
+{
+	UAnimInstance* AnimInstance = PresentationAnimInstance.Get();
+	USkeletalMeshComponent* Mesh = PresentationMesh.Get();
+	if (!bUsePlayerSitAnimations || !MenuLoopMontage || !AnimInstance || !Mesh ||
+		Mesh->GetAnimInstance() != AnimInstance || Mesh->GetOwner() != PlayerPawnRef)
+	{
+		return false;
+	}
+	if (!LoadedStandUpAnimation)
+	{
+		UE_LOG(LogAesirWarden, Warning, TEXT("Campfire: Stand Up Animation is missing; restoring locomotion before the camera handoff."));
+		return false;
+	}
+	const float PlayRate = FMath::Clamp(StandUpPlayRate, 0.1f, 3.0f);
+	StandUpMontage = PlayPlayerPresentationAnimation(LoadedStandUpAnimation, PlayRate, SitBlendTime);
+	if (!StandUpMontage)
+	{
+		return false;
+	}
+	bWaitingForStandUpAnimation = true;
+	FOnMontageEnded Finished;
+	Finished.BindUObject(this, &AAesirCampfireStart::HandleStandUpEnded);
+	AnimInstance->Montage_SetEndDelegate(Finished, StandUpMontage);
+
+	// This is a recovery watchdog, not the normal animation completion signal.
+	const float EffectiveRate = PlayRate * FMath::Max(LoadedStandUpAnimation->RateScale, 0.01f);
+	StandUpDeadline = GetWorld()->GetTimeSeconds() + LoadedStandUpAnimation->GetPlayLength() / EffectiveRate +
+		FMath::Max(0.0f, SitBlendTime) + 5.0f;
+	GetWorldTimerManager().SetTimer(StandUpMonitorTimer, this, &AAesirCampfireStart::MonitorStandUp, 0.1f, true);
+	UE_LOG(LogAesirWarden, Display, TEXT("Campfire: playing %s; waiting for its montage end before gameplay."),
+		*LoadedStandUpAnimation->GetName());
+	return true;
+}
+
+void AAesirCampfireStart::HandleStandUpEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (!bWaitingForStandUpAnimation || Montage != StandUpMontage)
+	{
+		return;
+	}
+	if (bInterrupted)
+	{
+		UE_LOG(LogAesirWarden, Warning, TEXT("Campfire: stand-up montage was interrupted; restoring locomotion and completing the opening."));
+	}
+	else
+	{
+		UE_LOG(LogAesirWarden, Display, TEXT("Campfire: stand-up animation completed."));
+	}
+	CompleteOpeningPresentation();
+}
+
+void AAesirCampfireStart::MonitorStandUp()
+{
+	if (!bWaitingForStandUpAnimation)
+	{
+		GetWorldTimerManager().ClearTimer(StandUpMonitorTimer);
+		return;
+	}
+	USkeletalMeshComponent* Mesh = PresentationMesh.Get();
+	if (!Mesh || Mesh->GetAnimInstance() != PresentationAnimInstance.Get() ||
+		!IsValid(PlayerControllerRef) || PlayerControllerRef->GetPawn() != Mesh->GetOwner() ||
+		GetWorld()->GetTimeSeconds() > StandUpDeadline)
+	{
+		UE_LOG(LogAesirWarden, Warning, TEXT("Campfire: stand-up lost its player/AnimInstance or timed out; restoring gameplay safely."));
+		CompleteOpeningPresentation();
+	}
+}
+
+void AAesirCampfireStart::FinishOpeningPresentation(bool bSkipped)
+{
+	ClearPlayerPresentation();
+}
+
+void AAesirCampfireStart::ClearPlayerPresentation()
+{
+	bWaitingForStandUpAnimation = false;
+	GetWorldTimerManager().ClearTimer(StandUpMonitorTimer);
+	if (UAnimInstance* AnimInstance = PresentationAnimInstance.Get())
+	{
+		// Touch only this actor's montage delegates. Player evade/attack bindings remain intact.
+		if (StandUpMontage)
+		{
+			FOnMontageEnded Empty;
+			AnimInstance->Montage_SetEndDelegate(Empty, StandUpMontage);
+			AnimInstance->Montage_Stop(0.0f, StandUpMontage);
+		}
+		if (MenuLoopMontage)
+		{
+			AnimInstance->Montage_Stop(0.0f, MenuLoopMontage);
+		}
+		AnimInstance->SetRootMotionMode(static_cast<ERootMotionMode::Type>(SavedRootMotionMode));
+	}
+	if (USkeletalMeshComponent* Mesh = PresentationMesh.Get())
+	{
+		Mesh->VisibilityBasedAnimTickOption = static_cast<EVisibilityBasedAnimTickOption>(SavedVisibilityTickOption);
+	}
+	MenuLoopMontage = nullptr;
+	StandUpMontage = nullptr;
+	LoadedStandUpAnimation = nullptr;
+	PresentationAnimInstance.Reset();
+	PresentationMesh.Reset();
 }
