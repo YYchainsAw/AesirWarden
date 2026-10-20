@@ -241,6 +241,7 @@ bool UAesirOpeningCameraComponent::BeginTransition(APlayerController* Controller
 {
 	CancelTransition(false);
 	bCompleted = false;
+	bSkipRequested = false;
 	Progress = RouteAlpha = 0.0f;
 	BlendOutStartProgress = -1.0f;
 	MinimumObservedClearance = TNumericLimits<float>::Max();
@@ -431,15 +432,21 @@ void UAesirOpeningCameraComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	UpdatePlayerEnvelope();
 	const float NextProgress = bAnimationFinished ? 1.0f : GetAnimationProgress();
 	const float NextAlpha = FMath::Max(RouteAlpha, Ease(NextProgress));
+	const FMinimalViewInfo NextView = EvaluateView(NextAlpha);
 	FString Reason;
-	if (!IsPointSafe(LastView.Location, &Reason) || !ValidateRoute(RouteAlpha, NextAlpha, true, &Reason))
+	// A long frame writes only the next rendered pose. Its straight chord must
+	// also be safe; clear samples along the intended arc alone are insufficient.
+	// Explicit skipping cuts to the endpoint after validating the remaining arc.
+	if (!IsPointSafe(LastView.Location, &Reason) ||
+		(!bSkipRequested && !IsSegmentSafe(LastView.Location, NextView.Location, &Reason)) ||
+		!ValidateRoute(RouteAlpha, NextAlpha, true, &Reason))
 	{
 		Fail(Reason);
 		return;
 	}
 	Progress = NextProgress;
 	RouteAlpha = NextAlpha;
-	LastView = EvaluateView(RouteAlpha);
+	LastView = NextView;
 	ApplyView(LastView);
 	if (bAnimationFinished)
 	{
@@ -475,6 +482,7 @@ void UAesirOpeningCameraComponent::RequestFinishTransition()
 {
 	if (bActive)
 	{
+		bSkipRequested = true;
 		bAnimationFinished = true;
 	}
 }
@@ -502,6 +510,7 @@ void UAesirOpeningCameraComponent::CancelTransition(bool bRestorePlayerView)
 {
 	bActive = false;
 	bAnimationFinished = false;
+	bSkipRequested = false;
 	SetComponentTickEnabled(false);
 	if (bRestorePlayerView && PlayerController.IsValid() && PlayerCharacter.IsValid() &&
 		PlayerController->GetViewTarget() == TransitionCamera)

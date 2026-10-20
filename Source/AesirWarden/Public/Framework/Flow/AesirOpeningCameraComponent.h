@@ -126,4 +126,5 @@ private:
 	bool bActive = false;
 	bool bCompleted = false;
 	bool bAnimationFinished = false;
+	bool bSkipRequested = false;
 };

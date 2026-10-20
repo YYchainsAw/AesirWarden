@@ -460,14 +460,7 @@ public:
 			{
 				// A fully enclosed source/target cannot satisfy the path constraint.
 				// Rejection must leave the existing menu and its input/AI gate intact.
-				AActor* Obstacle = Fixture->World->SpawnActor<AActor>();
-				UBoxComponent* Blocker = NewObject<UBoxComponent>(Obstacle);
-				Obstacle->AddInstanceComponent(Blocker);
-				Obstacle->SetRootComponent(Blocker);
-				Blocker->SetBoxExtent(FVector(2000.0f));
-				Blocker->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-				Blocker->SetCollisionResponseToAllChannels(ECR_Block);
-				Blocker->RegisterComponent();
+				BlockCameraRoute();
 				Test->TestFalse(TEXT("Start rejects a camera route enclosed by blocking geometry"), Director->RequestStartGame());
 				Test->TestEqual(TEXT("A rejected camera route restores MainMenu"), Director->GetFlowState(), EAesirLevelFlowState::MainMenu);
 				Test->TestFalse(TEXT("A rejected route leaves no active transition"), OpeningCamera->IsTransitionActive());
@@ -506,7 +499,51 @@ public:
 			{
 				Test->TestTrue(TEXT("Skip accepts an active simultaneous opening"), Director->SkipOpeningCinematic());
 			}
+			if (Mode == TEXT("Interrupted"))
+			{
+				// Stop the owned montage through the actual animation API so its
+				// interruption delegate, rather than a direct flow call, recovers.
+				UAnimInstance* Anim = Character->GetMesh()->GetAnimInstance();
+				Anim->Montage_Stop(0.0f, StandUpMontage.Get());
+				Anim->DispatchQueuedAnimEvents();
+				FailureInjectedFrame = Frames;
+			}
+			if (Mode == TEXT("DynamicBlocked"))
+			{
+				// The clear path was already accepted and is active. Insert a new
+				// obstacle now to exercise runtime sweep failure independently.
+				BlockCameraRoute();
+				FailureInjectedFrame = Frames;
+			}
 			return false;
+		}
+
+		if (FailureInjectedFrame != INDEX_NONE)
+		{
+			if (Director->GetFlowState() != EAesirLevelFlowState::MainMenu)
+			{
+				if (Director->GetFlowState() == EAesirLevelFlowState::Exploration || Frames - FailureInjectedFrame > 2)
+				{
+					Test->AddError(TEXT("An interrupted or obstructed opening did not promptly recover to MainMenu."));
+					return true;
+				}
+				return false;
+			}
+			Test->TestFalse(TEXT("Recovery does not leave an active transition"), OpeningCamera->IsTransitionActive());
+			Test->TestFalse(TEXT("Recovery never reports a successful camera handoff"), OpeningCamera->WasTransitionCompleted());
+			Test->TestNull(TEXT("Recovery destroys the temporary transition camera"), OpeningCamera->GetTransitionCamera());
+			Test->TestFalse(TEXT("Recovery clears the interrupted stand-up gate"), IsWaitingForStandUp(Director));
+			Test->TestTrue(TEXT("Recovery keeps gameplay input blocked"), Fixture->Viewport->IgnoreInput());
+			Test->TestTrue(TEXT("Recovery keeps player movement and look locked"),
+				Fixture->Controller->IsMoveInputIgnored() && Fixture->Controller->IsLookInputIgnored());
+			UAesirMainMenuWidget* Menu = ReadObjectProperty<UAesirMainMenuWidget>(Director, TEXT("MainMenuRef"));
+			Test->TestTrue(TEXT("Recovery restores the interactive menu"), Menu && Menu->IsInViewport());
+			Test->TestEqual(TEXT("Recovery restores the authored menu camera"), Fixture->Controller->GetViewTarget(),
+				static_cast<AActor*>(ReadObjectProperty<ACameraActor>(Director, TEXT("MenuCamera"))));
+			UAnimInstance* Anim = Character->GetMesh()->GetAnimInstance();
+			UAnimMontage* Loop = ReadObjectProperty<UAnimMontage>(Director, TEXT("MenuLoopMontage"));
+			Test->TestTrue(TEXT("Recovery resumes the owned seated loop"), Loop && Anim->Montage_IsPlaying(Loop));
+			return true;
 		}
 
 		if (ACameraActor* Camera = OpeningCamera->GetTransitionCamera())
@@ -541,6 +578,7 @@ public:
 			OpeningCamera->GetMinimumObservedClearance() + 0.1f >= OpeningCamera->MinPlayerClearance);
 		Test->TestTrue(TEXT("The final camera position matches the actual follow camera"), OpeningCamera->GetEndPositionError() <= 0.1f);
 		Test->TestTrue(TEXT("The final camera rotation matches the actual follow camera"), OpeningCamera->GetEndRotationError() <= 0.1f);
+		Test->TestTrue(TEXT("The final field of view matches the actual follow camera"), OpeningCamera->GetEndFOVError() <= 0.1f);
 		Test->TestEqual(TEXT("The gameplay view returns to the same player"), Fixture->Controller->GetViewTarget(), static_cast<AActor*>(Character));
 		Test->TestFalse(TEXT("The synchronized opening releases gameplay input"), Fixture->Viewport->IgnoreInput());
 		if (Mode != TEXT("Skip"))
@@ -551,6 +589,18 @@ public:
 	}
 
 private:
+	void BlockCameraRoute()
+	{
+		AActor* Obstacle = Fixture->World->SpawnActor<AActor>();
+		UBoxComponent* Blocker = NewObject<UBoxComponent>(Obstacle);
+		Obstacle->AddInstanceComponent(Blocker);
+		Obstacle->SetRootComponent(Blocker);
+		Blocker->SetBoxExtent(FVector(2000.0f));
+		Blocker->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		Blocker->SetCollisionResponseToAllChannels(ECR_Block);
+		Blocker->RegisterComponent();
+	}
+
 	FAutomationTestBase* Test;
 	TSharedPtr<FMenuWorld> Fixture;
 	AAesirCampfireStart* Director;
@@ -561,6 +611,7 @@ private:
 	float MaxTravel = 0.0f;
 	int32 Frames = 0;
 	int32 AnimationFinishedFrame = INDEX_NONE;
+	int32 FailureInjectedFrame = INDEX_NONE;
 	bool bStarted = false;
 };
 
@@ -893,7 +944,8 @@ IMPLEMENT_COMPLEX_AUTOMATION_TEST(FAesirOpeningCameraFlowTest, "Aesir.Menu.Camer
 
 void FAesirOpeningCameraFlowTest::GetTests(TArray<FString>& OutBeautifiedNames, TArray<FString>& OutTestCommands) const
 {
-	for (const FString& Mode : { FString(TEXT("NaturalSlow")), FString(TEXT("NaturalFast")), FString(TEXT("Skip")), FString(TEXT("Destroy")), FString(TEXT("Blocked")) })
+	for (const FString& Mode : { FString(TEXT("NaturalSlow")), FString(TEXT("NaturalFast")), FString(TEXT("Skip")), FString(TEXT("Destroy")),
+		FString(TEXT("Blocked")), FString(TEXT("Interrupted")), FString(TEXT("DynamicBlocked")) })
 	{
 		OutBeautifiedNames.Add(Mode);
 		OutTestCommands.Add(Mode);
@@ -915,7 +967,7 @@ bool FAesirOpeningCameraFlowTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	Director->StandUpPlayRate = Parameters == TEXT("NaturalSlow") ? 0.5f : 1.5f;
-	if (Parameters == TEXT("Blocked"))
+	if (Parameters == TEXT("Blocked") || Parameters == TEXT("Interrupted") || Parameters == TEXT("DynamicBlocked"))
 	{
 		AddExpectedError(TEXT("Campfire: synchronized camera aborted:"), EAutomationExpectedErrorFlags::Contains, 1);
 	}
@@ -1387,16 +1439,17 @@ private:
 		{
 			if (!OpeningCamera->WasTransitionCompleted() || OpeningCamera->IsTransitionActive() ||
 				OpeningCamera->GetMinimumObservedClearance() + 0.1f < OpeningCamera->MinPlayerClearance ||
-				OpeningCamera->GetEndPositionError() > 0.1f || OpeningCamera->GetEndRotationError() > 0.1f || MaxCameraTravel < 5.0f)
+				OpeningCamera->GetEndPositionError() > 0.1f || OpeningCamera->GetEndRotationError() > 0.1f ||
+				OpeningCamera->GetEndFOVError() > 0.1f || MaxCameraTravel < 5.0f)
 			{
-				Fail(FString::Printf(TEXT("The opening camera did not complete a safe, moving, matched handoff: completed=%d, active=%d, clearance=%.2f, travel=%.2f, endpointError=%.3f cm/%.3f deg."),
+				Fail(FString::Printf(TEXT("The opening camera did not complete a safe, moving, matched handoff: completed=%d, active=%d, clearance=%.2f, travel=%.2f, endpointError=%.3f cm/%.3f deg, FOV error=%.3f deg."),
 					OpeningCamera->WasTransitionCompleted(), OpeningCamera->IsTransitionActive(), OpeningCamera->GetMinimumObservedClearance(),
-					MaxCameraTravel, OpeningCamera->GetEndPositionError(), OpeningCamera->GetEndRotationError()));
+					MaxCameraTravel, OpeningCamera->GetEndPositionError(), OpeningCamera->GetEndRotationError(), OpeningCamera->GetEndFOVError()));
 				return;
 			}
-			UE_LOG(LogAesirWarden, Display, TEXT("START_MENU_CAMERA_PASS: rate=%.2f; minimum body clearance=%.2f cm; camera travel=%.2f cm; endpoint error=%.3f cm/%.3f degrees; simultaneous stand-up handoff in %.3f seconds."),
+			UE_LOG(LogAesirWarden, Display, TEXT("START_MENU_CAMERA_PASS: rate=%.2f; minimum body clearance=%.2f cm; camera travel=%.2f cm; endpoint error=%.3f cm/%.3f degrees; FOV error=%.3f degrees; simultaneous stand-up handoff in %.3f seconds."),
 				Campfire->StandUpPlayRate, OpeningCamera->GetMinimumObservedClearance(), MaxCameraTravel,
-				OpeningCamera->GetEndPositionError(), OpeningCamera->GetEndRotationError(), Now - StartClickedAt);
+				OpeningCamera->GetEndPositionError(), OpeningCamera->GetEndRotationError(), OpeningCamera->GetEndFOVError(), Now - StartClickedAt);
 			if (Controller->IsMoveInputIgnored() || Controller->IsLookInputIgnored() ||
 				Viewport->IgnoreInput() || Controller->bShowMouseCursor ||
 				(Menu.IsValid() && Menu->IsInViewport()) || Controller->GetViewTarget() != Controller->GetPawn())

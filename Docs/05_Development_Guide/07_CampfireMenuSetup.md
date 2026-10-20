@@ -1,6 +1,6 @@
 # Main 起点营火菜单接手指南
 
-> 2026-10-20：菜单框架、玩家坐姿/起身交接与透明黄金分割布局。完整第一关流程仍见 [05_LevelFlowGuide.md](05_LevelFlowGuide.md)；本轮不代表 M1 完成。各次增量的验证状态见文末，不沿用首版菜单测试结果。
+> 2026-10-20：菜单框架、玩家坐姿/起身、同步安全绕行镜头与透明黄金分割布局。完整第一关流程仍见 [05_LevelFlowGuide.md](05_LevelFlowGuide.md)；本轮不代表 M1 完成。各次增量的验证状态见文末，不沿用首版菜单测试结果。
 
 ## 打开后先调整哪里
 
@@ -41,7 +41,7 @@
 
 ## 配置玩家坐姿和起身
 
-动画播放在 **PlayerStart 生成的真实玩家角色** 上，沿用玩家原来的 `ABP_AesirPlayer`。不需要额外摆放一个展示角色，不需要制作新的 Montage，也不需要在开始按钮里接 `Play Animation` 或 `Delay`。C++ 在运行时把动画序列转换为 Montage，并等待起身播放完成后交还控制。
+动画播放在 **PlayerStart 生成的真实玩家角色** 上，沿用玩家原来的 `ABP_AesirPlayer`。不需要额外摆放一个展示角色，不需要制作新的 Montage，也不需要在开始按钮里接 `Play Animation` 或 `Delay`。C++ 在运行时把动画序列转换为 Montage；默认点击开始时同时播放起身并启动绕行镜头，动画与镜头都完成后才交还控制。
 
 完整编译结束后重新打开 UE，按以下顺序检查和调整：
 
@@ -50,28 +50,50 @@
 3. `Player Animation Slot` 保持 `DefaultSlot`。现有 `ABP_AesirPlayer` 已有该 Slot，通常无需改图；若替换了动画蓝图，确认全身 `DefaultSlot` 的姿势能传到最终输出，且后面的 Control Rig/脚部 IK 没有把坐姿改回站姿。不要为此重建整套移动状态机。
 4. 双击 `AS_SSH_Sit_Loop` 和 `AS_SSH_Sit_End` 预览动作，确认都适用于当前玩家 Skeleton。前者应为坐姿循环，后者应从相同坐姿起身。菜单直接进入循环，`AS_SSH_Sit_Start` 不是本流程的必填资产。
 5. 回到 Main，移动和旋转 **PlayerStart** 来确定玩家坐在地面的地方及朝向，再移动营火 Actor 和 `MenuCamera` 来构图。只移动营火 Actor 不会移动真实玩家出生点。以坐姿双脚、臀部和起身后的脚底为准检查地面高度，避免让角色坐进地形或正对火焰。
-6. 保存 BP 和地图，启动 PIE。菜单中应持续坐着；点击开始一次后，菜单关闭，角色完成起身，镜头交接后才能移动和战斗。再按一次开始不应重复触发起身。
+6. 在 BP 的 **Components** 中选择新增的 `OpeningCamera`，按下文检查安全绕行设置。完整编译并重开编辑器后，原 BP 会继承这个原生组件，不需要手工添加第二个组件，也不需要重新制作按钮事件。
+7. 保存 BP 和地图，启动 PIE。菜单中应持续坐着；点击开始一次后，菜单关闭，起身与镜头绕行同时开始，起身结束时接回玩家相机，然后才能移动和战斗。再按一次开始不应重复触发起身。若回到菜单并提示演出暂时无法开始，先按下文检查相机端点、路径和碰撞。
 
 | Details 中的设置 | 默认值 | 调整作用 |
 | --- | --- | --- |
 | `Use Player Sit Animations` | 开启 | 启用真实玩家坐姿循环与起身流程；关闭时沿用直接交接流程。 |
 | `Menu Sit Loop Animation` | `AS_SSH_Sit_Loop` | 菜单期间循环播放的动画序列，可替换为同一 Skeleton 的其它坐姿。 |
-| `Stand Up Animation` | `AS_SSH_Sit_End` | 开始后的单次起身动画，完成后才继续开场流程。 |
+| `Stand Up Animation` | `AS_SSH_Sit_End` | 开始后的单次起身动画；默认绕行镜头读取这段 Montage 的实时进度，同步完成交接。 |
 | `Player Animation Slot` | `DefaultSlot` | 原动画蓝图接收动态 Montage 的 Slot 名，必须与 AnimGraph 的 Slot 一致。 |
 | `Sit Blend Time` | `0.2` 秒 | 姿势切换时的混合时间，先保留默认值，再根据角色动作微调。 |
 | `Stand Up Play Rate` | `1.0` | 起身速度；增大会加快，减小会变慢。 |
-| `Opening Blend Time` | `0.6` 秒 | 起身和可选开场序列结束后，切回玩家相机所用的时间。 |
-| `Opening Sequence Actor` | `None` | 可选的额外开场演出；仅实现营火坐起时保持为空。 |
+| `Opening Blend Time` | `0.6` 秒 | 旧模式下起身和可选开场序列结束后切回玩家相机的时间；默认同步绕行模式不再叠加这段混合。 |
+| `Opening Sequence Actor` | `None` | 默认保持为空以启用同步绕行。若显式指定 Sequence，则沿用“先起身 → Sequence → Blend”模式。 |
 
 菜单动画期间代码临时忽略根运动，防止循环改变玩家位置；退出菜单演出后恢复原设置。不要依赖起身动画中的根位移把玩家送到另一处，应该把 PlayerStart 放在预期的可操作位置。若换动作后出现明显滑步，需要调整动画或摆位，而不是在按钮里叠加位移。
 
 ## 开始按钮后的流程
 
-`MainMenu`（坐姿循环、玩家和 AI 等待）→ 点击开始 → `Opening`（单次起身，输入仍锁定）→ 可选 `Opening Sequence Actor` → 相机交接 → `Exploration`（恢复输入、HUD 和 AI）。
+默认流程为 `MainMenu`（坐姿循环、玩家和 AI 等待）→ 点击开始 → `Opening`（起身与安全绕行镜头同步，输入仍锁定）→ 起身完成且镜头接回玩家 → `Exploration`（恢复输入、HUD 和 AI）。
 
-`WBP_CampfireMainMenu` 的 `Btn_Start` 已通过原生父类调用 `RequestStartGame()`，不需要添加第二条 OnClicked 播放动画逻辑。起身使用 Montage 完成回调推进流程，不使用手填动画时长的 Delay；更换起身动画或播放速度后，不必同步修改一个延迟值。动画、Slot 或 AnimInstance 配置无效时查看 Output Log 中的提示，先修复配置再验收画面。
+`WBP_CampfireMainMenu` 的 `Btn_Start` 已通过原生父类调用 `RequestStartGame()`，不需要添加第二条 OnClicked 播放动画或镜头逻辑。起身使用 Montage 完成回调推进流程；镜头读取该 Montage 的实时进度，不使用手填动画时长的 Delay。更换起身动画或播放速度后，不必同步修改延迟值。动画与镜头均完成、起点流送也就绪后，流程才允许进入探索。动画、Slot 或 AnimInstance 配置无效时查看 Output Log 中的提示，先修复配置再验收画面。
 
-起身动画中断、跳过开场或退出关卡时，代码负责停止自己的菜单动画并清理临时状态，避免输入和根运动设置留在菜单状态。若另外编写蓝图演出，避免同时控制同一个角色的动画和位置。
+同步模式下，起身中断、角色或相机引用丢失、路径受阻都会取消演出，停止自己的菜单动画与临时镜头，恢复菜单与坐姿，继续锁定游戏输入；若角色暂时失去控制器附身，会先等待附身恢复，再呈现菜单。`SkipOpeningCinematic()` 会先请求安全完成剩余路径，完成检查后才交还操作；不是直接在任意位置放开输入。退出关卡时同样清理自己的临时状态。若另外编写蓝图演出，避免同时控制同一个角色的动画、相机和位置。
+
+### 调整同步起身镜头
+
+完整编译 `AesirWardenEditor Win64 Development` 并重开 UE 后，打开 `BP_AesirCampfireStart`，在 **Components** 中选择 `OpeningCamera`，在 Details 的 **Opening Camera** 分类调整下表属性。Main 中选中营火实例后，也可展开同名组件设置实例覆盖；已有黄色重置箭头时，以实例覆盖值为准。
+
+| 属性 | 默认值 | 调整作用 |
+| --- | --- | --- |
+| `Enabled` | 开启 | 启用同步安全绕行。关闭时使用原有起身后 Blend 模式，该模式不提供本组件的绕行与距离检查。 |
+| `Min Player Clearance` | `100 cm` | 从相机探测球外缘到角色保守保护范围的最小净距；最低为 100 cm，可调大。不是从角色中心量 100 cm。 |
+| `Camera Probe Radius` | `12 cm` | 环境碰撞探测球半径，同时计入玩家净距；范围 5～50 cm。增大会更保守，也可能使狭窄路线不可用。 |
+| `Orbit Direction` | `Auto` | 自动先尝试较短方向，再尝试另一侧；`Left` / `Right` 固定绕行方向。固定方向受阻时不会自动换边。 |
+| `Arc Height` | `60 cm` | 路线中段优先增加的高度，起终点不变。若优先高度受阻，会继续尝试更高的候选弧线。 |
+| `Ease Curve` | `None` | 默认使用平滑缓入缓出。可选 Float Curve，以横轴 0～1 表示动画进度、纵轴 0～1 表示镜头路线进度，建议连续单调递增并经过 `(0,0)`、`(1,1)`；代码限制端点、取值范围与前进方向。 |
+
+摆位顺序：先调 **PlayerStart** 确定真实玩家位置和朝向，再调营火 `MenuCamera` 的菜单构图，最后在玩家角色 BP 中检查实际使用的相机与 SpringArm 终点。默认路线从当前菜单视角出发，绕角色到达真实玩家相机；它读取实际相机的 FOV、SpringArm 碰撞和滞后结果，不把营火 Actor 的相机当作第二个玩家。
+
+保护范围以角色 Capsule 为基础，并保守覆盖可见的骨骼模型、静态模型及附属装备外缘，横向按圆柱避让；角色起身过程中会更新。因此相机在角色头顶很高，也不能从保护范围内部抄近路。默认要求是**相机探测球外缘距离这整个保护范围至少 1 米**，通常比距角色中心 1 米更远。菜单相机与玩家相机两个端点也必须满足要求；若玩家 SpringArm 太短或被墙压近角色，先移动场景位置、菜单相机或调整玩家相机，不能靠减小安全距离解决。
+
+路线开始前做完整预检，运行中对后续位移做玩家距离检查与环境球形 Sweep；正常播放与自然结束还检查上一实际镜头位置到下一实际位置的直线段，避免大卡顿时两帧间的弦切入人物或墙壁。环境检查使用 **Camera** 碰撞通道，所以应阻挡相机的墙体、地形和道具需在碰撞设置中阻挡该通道。没有配置碰撞的纯装饰模型不会自动成为阻挡物。全部候选路线都受阻时返回菜单，状态提示“开场演出暂时无法开始，请重试”；Output Log 中 `Campfire: synchronized camera aborted` 后会给出端点净距、挡路 Actor 或动画配置原因。优先调整摆位、绕行方向和弧高，再重试。
+
+无需在关卡里手动摆放过渡 Camera Actor：组件只在演出期间创建临时相机，成功交接、取消或退出时清理。若要恢复现有 Sequence 演出，设置 `Opening Sequence Actor` 并关闭它的 Auto Play；或者显式关闭 `OpeningCamera.Enabled`。这两种兼容模式继续使用原来的 `Opening Blend Time`，不适用本段安全绕行保证。
 
 ## 营火与相机
 
@@ -108,7 +130,7 @@ setup_campfire_art.install_campfire_art()
 
 ## 当前流程边界
 
-默认未指定 `Opening Sequence Actor`，开始后先等待玩家起身，再用约 0.6 秒 Blend 到玩家相机并进入 `Exploration`。可调整 `Opening Blend Time`；若后续指定开场 Sequence，关闭该 Sequence Actor 的 Auto Play，并自行配置角色绑定和 Camera Cuts。它是在起身后播放的额外演出，当前需求无需设置。
+默认未指定 `Opening Sequence Actor`，`OpeningCamera.Enabled` 开启，点击开始后起身与绕行同时进行，动画结束时匹配并接回玩家相机，随后进入 `Exploration`，不再额外等待约 0.6 秒。若显式关闭该组件，或指定开场 Sequence，则使用原有起身后交接模式及 `Opening Blend Time`；Sequence Actor 必须关闭 Auto Play，并自行配置角色绑定和 Camera Cuts。
 
 世界大纲中的 `Sequences` 只是整理文件夹。原地图里的 `Additional_PickupShots`、`BRolls`、`QA_Perf_Flythrough` 等 Level Sequence Actor 未接到营火开始流程；无需删除它们，也无需用它们制作本轮坐起效果。`Aesir Campfire Start` 才是本轮菜单入口，`StartupStreamingSource` 是它维护起点加载的组件，`MenuCamera` 是菜单观察镜头，二者均不是额外玩家。
 
@@ -211,3 +233,14 @@ UnrealEditor-Cmd.exe AesirWarden.uproject /Engine/Maps/Entry -EnablePlugins=Pyth
 | Main 实机布局、透明效果与起身交接 | 1920×1080 Standalone 通过 `START_MENU_PRESENTATION_PASS` 与 `START_MENU_MAIN_SMOKE_PASS`；实际 Logo 中心 `(0.6180, 0.3820)`，四按钮共轴、55 号且均在屏幕内。目视确认字体、Logo 比例及边框中心透出地图；菜单等待 10 秒内玩家 150 HP 不变、Boss 保持等待，起身后恢复输入和 HUD；日志 `Saved/Logs/GoldenMenuMainSmoke1920.log`，截图 `Saved/StartMenu/GoldenLayout/Preview/`。 |
 
 本次截图通过进程参数 `-ForceRes -ResX=1920 -ResY=1080 -RenderOffscreen` 指定分辨率；截图进程临时执行 `DisableAllScreenMessages` 隐藏开发提示，未修改地图或项目渲染配置。设置仍为可扩展的占位子页，尚未接入实际画质、音量和键位；本轮也未进行 cooked Windows 包验收。
+
+### 同步起身与安全绕行镜头增量
+
+| 检查 | 本轮结果与证据 |
+| --- | --- |
+| Editor 完整编译与新组件继承 | `AesirWardenEditor Win64 Development` 编译、链接通过；`Saved/Logs/OpeningCameraBuild.log`。已有营火 BP 和 Main 实例继承 `OpeningCamera` 并参与实机演出；本轮未重存地图或营火 BP。 |
+| 自动化：起身与镜头双门禁、距离检查、跳过、受阻恢复和销毁清理 | 最终 16 项通过，0 失败、0 警告；新增慢速、快速、跳过、销毁、开始前阻挡、途中动态阻挡、动画中断 7 项 `CameraFlow` 回归；报告 `Saved/StartMenu/OpeningCamera/AutomationFinal/index.json`、日志 `Saved/Logs/OpeningCameraAutomationFinal.log`。 |
+| Main 实机：起身与绕行同步、至少 100 cm 净距、终点匹配与输入/HUD 恢复 | 1920×1080 Standalone 三次均通过 `START_MENU_CAMERA_PASS`、`START_MENU_MAIN_SMOKE_PASS`；观察到的最小人物/装备保护范围净距均为 `155.16 cm`，已扣除相机探测球半径。最终版 1.5 倍速检查终点位置、旋转、FOV 误差均为 0；菜单等待 10 秒内玩家 150 HP 不变，Boss Episode 保持等待，完成后恢复输入和 HUD。 |
+| 动画速度变化与用户最终镜头构图 | 标准 `1.0` 倍速约 `1.848 s`、`0.5` 倍速约 `3.349 s`、最终版 `1.5` 倍速约 `1.344 s` 完成同步交接。日志依次为 `Saved/Logs/OpeningCameraMainSmoke.log`、`OpeningCameraMainSlow.log`、`OpeningCameraMainFast.log`；原始截图位于 `Saved/StartMenu/OpeningCamera/Normal/`、`Slow/`、`Fast/`。中间帧和终点已目视检查，最终美术节奏仍可在组件参数中调整。 |
+
+标准与慢速实机记录来自加入帧间直线段补充检查前的构建，最终版另外通过全部 16 项回归及快速实机检查。实机日志仍包含队友服务离线等原有提示，未阻塞本次流程；本轮不是 cooked Windows 包或正式性能验收。
