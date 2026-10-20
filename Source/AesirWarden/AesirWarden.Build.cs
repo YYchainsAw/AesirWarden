@@ -19,11 +19,19 @@ public class AesirWarden : ModuleRules
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate",
+			"SlateCore",
 			"GameplayTags",
 			"GameplayAbilities",
 			"GameplayTasks",
 			"MotionWarping"
 		});
+
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.AddRange(new string[] {
+				"UnrealEd", "UMGEditor", "KismetCompiler", "AssetRegistry"
+			});
+		}
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
 			"LevelSequence",

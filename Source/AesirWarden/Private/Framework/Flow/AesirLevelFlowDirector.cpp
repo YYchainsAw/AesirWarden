@@ -4,18 +4,29 @@
 #include "Framework/Flow/AesirLevelFlowDirector.h"
 #include "AesirWarden.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Camera/CameraActor.h"
+#include "Components/WorldPartitionStreamingSourceComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
+#include "UI/AesirMainMenuWidget.h"
+#include "WorldPartition/WorldPartitionSubsystem.h"
 
 AAesirLevelFlowDirector::AAesirLevelFlowDirector()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	MainMenuWidgetClass = UAesirMainMenuWidget::StaticClass();
+	StartupStreamingSource = CreateDefaultSubobject<UWorldPartitionStreamingSourceComponent>(TEXT("StartupStreamingSource"));
+	StartupStreamingSource->Priority = EStreamingSourcePriority::High;
+#if WITH_EDITOR
+	SetIsSpatiallyLoaded(false);
+#endif
 }
 
 void AAesirLevelFlowDirector::BeginPlay()
@@ -29,6 +40,7 @@ void AAesirLevelFlowDirector::BeginPlay()
 		{
 			UE_LOG(LogAesirWarden, Error, TEXT("Level flow: duplicate director %s; %s already owns the flow."),
 				*GetName(), *It->GetName());
+			StartupStreamingSource->DisableStreamingSource();
 			return;
 		}
 	}
@@ -72,6 +84,11 @@ void AAesirLevelFlowDirector::TryInitializeFlow()
 	}
 
 	bInitialized = true;
+	if (UAesirMainMenuWidget* Menu = Cast<UAesirMainMenuWidget>(MainMenuRef))
+	{
+		Menu->OnStartRequested.AddUniqueDynamic(this, &AAesirLevelFlowDirector::HandleStartRequested);
+		Menu->OnQuitRequested.AddUniqueDynamic(this, &AAesirLevelFlowDirector::HandleQuitRequested);
+	}
 	OnMainMenuCreated(MainMenuRef.Get());
 	if (!IsActorBeingDestroyed())
 	{
@@ -100,6 +117,13 @@ bool AAesirLevelFlowDirector::EnterMainMenu()
 		return false;
 	}
 
+	PresentMainMenu();
+	return true;
+}
+
+void AAesirLevelFlowDirector::PresentMainMenu()
+{
+	bMenuFocusInitialized = false;
 	AcquireInputLocks();
 	PlayerControllerRef->SetViewTargetWithBlend(MenuCamera.Get(), 0.0f);
 	MainMenuRef->AddToViewport(MainMenuZOrder);
@@ -112,6 +136,98 @@ bool AAesirLevelFlowDirector::EnterMainMenu()
 	PlayerControllerRef->FlushPressedKeys();
 	PlayerControllerRef->SetShowMouseCursor(true);
 	SetFlowState(EAesirLevelFlowState::MainMenu);
+	RefreshMenuStreamingState();
+	GetWorldTimerManager().SetTimer(MenuStreamingTimerHandle, this,
+		&AAesirLevelFlowDirector::RefreshMenuStreamingState, 0.1f, true);
+}
+
+bool AAesirLevelFlowDirector::IsStartupStreamingReady() const
+{
+	if (!GetWorld() || !GetWorld()->GetWorldPartition())
+	{
+		return true;
+	}
+	const UWorldPartitionSubsystem* Partition = GetWorld()->GetSubsystem<UWorldPartitionSubsystem>();
+	return Partition && StartupStreamingSource->IsStreamingCompleted() && Partition->IsStreamingCompleted();
+}
+
+void AAesirLevelFlowDirector::RefreshMenuStreamingState()
+{
+	if (CurrentState == EAesirLevelFlowState::MainMenu || CurrentState == EAesirLevelFlowState::OpeningCinematic)
+	{
+		HideGameplayHUD();
+	}
+	if (CurrentState != EAesirLevelFlowState::MainMenu)
+	{
+		return;
+	}
+	const bool bWasReady = bStartupStreamingReady;
+	bStartupStreamingReady = IsStartupStreamingReady();
+	if (UAesirMainMenuWidget* Menu = Cast<UAesirMainMenuWidget>(MainMenuRef))
+	{
+		Menu->SetStartAvailability(bStartupStreamingReady,
+			bStartupStreamingReady ? FText::GetEmpty() : NSLOCTEXT("AesirMenu", "PreparingStart", "正在准备营火与前路…"));
+		if (bStartupStreamingReady != bWasReady || !bMenuFocusInitialized)
+		{
+			Menu->FocusDefaultAction();
+			bMenuFocusInitialized = true;
+		}
+	}
+}
+
+void AAesirLevelFlowDirector::HideGameplayHUD()
+{
+	for (const TSubclassOf<UUserWidget>& HUDClass : GameplayHUDWidgetClasses)
+	{
+		if (!HUDClass)
+		{
+			continue;
+		}
+		TArray<UUserWidget*> Widgets;
+		UWidgetBlueprintLibrary::GetAllWidgetsOfClass(this, Widgets, HUDClass, true);
+		for (UUserWidget* Widget : Widgets)
+		{
+			if (IsValid(Widget) && Widget != MainMenuRef)
+			{
+				if (!HiddenGameplayHUD.Contains(Widget))
+				{
+					HiddenGameplayHUD.Add(Widget, Widget->GetVisibility());
+				}
+				Widget->SetVisibility(ESlateVisibility::Collapsed);
+			}
+		}
+	}
+}
+
+void AAesirLevelFlowDirector::RestoreGameplayHUD()
+{
+	for (const auto& Entry : HiddenGameplayHUD)
+	{
+		if (UUserWidget* Widget = Entry.Key.Get())
+		{
+			Widget->SetVisibility(Entry.Value);
+		}
+	}
+	HiddenGameplayHUD.Empty();
+}
+
+void AAesirLevelFlowDirector::HandleStartRequested()
+{
+	RequestStartGame();
+}
+
+void AAesirLevelFlowDirector::HandleQuitRequested()
+{
+	RequestQuitGame();
+}
+
+bool AAesirLevelFlowDirector::RequestQuitGame()
+{
+	if (CurrentState != EAesirLevelFlowState::MainMenu || !IsValid(PlayerControllerRef))
+	{
+		return false;
+	}
+	UKismetSystemLibrary::QuitGame(this, PlayerControllerRef.Get(), EQuitPreference::Quit, false);
 	return true;
 }
 
@@ -122,6 +238,11 @@ bool AAesirLevelFlowDirector::RequestStartGame()
 		return false;
 	}
 
+	RefreshMenuStreamingState();
+	if (!bStartupStreamingReady)
+	{
+		return false;
+	}
 	MainMenuRef->RemoveFromParent();
 	PlayerControllerRef->SetShowMouseCursor(false);
 	// Keep UI-only routing throughout the opening: movement locks alone do not block GAS attack inputs.
@@ -203,17 +324,43 @@ void AAesirLevelFlowDirector::BeginGameplayCameraHandoff()
 
 void AAesirLevelFlowDirector::CompleteGameplayCameraHandoff()
 {
-	EnterExploration();
+	if (CurrentState != EAesirLevelFlowState::OpeningCinematic)
+	{
+		return;
+	}
+	if (IsStartupStreamingReady())
+	{
+		EnterExploration();
+		return;
+	}
+	if (!bWaitingForGameplayStreaming)
+	{
+		bWaitingForGameplayStreaming = true;
+		GameplayStreamingStartedAt = GetWorld()->GetTimeSeconds();
+		GetWorldTimerManager().SetTimer(CameraHandoffTimerHandle, this,
+			&AAesirLevelFlowDirector::CompleteGameplayCameraHandoff, 0.1f, true);
+	}
+	else if (GetWorld()->GetTimeSeconds() - GameplayStreamingStartedAt >= GameplayStreamingTimeout)
+	{
+		GetWorldTimerManager().ClearTimer(CameraHandoffTimerHandle);
+		bWaitingForGameplayStreaming = false;
+		bCameraHandoffStarted = false;
+		UE_LOG(LogAesirWarden, Error, TEXT("Level flow: gameplay streaming timed out; returning to the menu with input locked."));
+		PresentMainMenu();
+	}
 }
 
 bool AAesirLevelFlowDirector::EnterExploration()
 {
-	if (!bInitialized || CurrentState != EAesirLevelFlowState::OpeningCinematic || !RefreshPlayerReferences())
+	if (!bInitialized || CurrentState != EAesirLevelFlowState::OpeningCinematic ||
+		!RefreshPlayerReferences() || !IsStartupStreamingReady())
 	{
 		return false;
 	}
 
 	GetWorldTimerManager().ClearTimer(CameraHandoffTimerHandle);
+	GetWorldTimerManager().ClearTimer(MenuStreamingTimerHandle);
+	RestoreGameplayHUD();
 	UnbindOpeningSequence();
 	if (IsValid(ActiveOpeningPlayer) && (ActiveOpeningPlayer->IsPlaying() || ActiveOpeningPlayer->IsPaused()))
 	{
@@ -226,6 +373,8 @@ bool AAesirLevelFlowDirector::EnterExploration()
 	PlayerControllerRef->SetInputMode(FInputModeGameOnly());
 	PlayerControllerRef->FlushPressedKeys();
 	PlayerControllerRef->SetShowMouseCursor(false);
+	StartupStreamingSource->DisableStreamingSource();
+	bWaitingForGameplayStreaming = false;
 	SetFlowState(EAesirLevelFlowState::Exploration);
 	return true;
 }
@@ -302,6 +451,8 @@ void AAesirLevelFlowDirector::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(InitializationTimerHandle);
 	GetWorldTimerManager().ClearTimer(CameraHandoffTimerHandle);
+	GetWorldTimerManager().ClearTimer(MenuStreamingTimerHandle);
+	RestoreGameplayHUD();
 	UnbindOpeningSequence();
 	if (IsValid(ActiveOpeningPlayer))
 	{
@@ -309,6 +460,11 @@ void AAesirLevelFlowDirector::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 	if (IsValid(MainMenuRef))
 	{
+		if (UAesirMainMenuWidget* Menu = Cast<UAesirMainMenuWidget>(MainMenuRef))
+		{
+			Menu->OnStartRequested.RemoveDynamic(this, &AAesirLevelFlowDirector::HandleStartRequested);
+			Menu->OnQuitRequested.RemoveDynamic(this, &AAesirLevelFlowDirector::HandleQuitRequested);
+		}
 		MainMenuRef->RemoveFromParent();
 	}
 	ReleaseInputLocks();
