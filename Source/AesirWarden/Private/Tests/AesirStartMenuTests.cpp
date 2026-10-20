@@ -520,9 +520,23 @@ bool FAesirMenuWidgetActionsTest::RunTest(const FString& Parameters)
 		(void)SlateMenu; // Retain SObjectWidget until this iteration finishes.
 		UButton* Start = Cast<UButton>(Menu->GetWidgetFromName(TEXT("Btn_Start")));
 		UButton* Quit = Cast<UButton>(Menu->GetWidgetFromName(TEXT("Btn_Quit")));
+		UButton* Settings = Cast<UButton>(Menu->GetWidgetFromName(TEXT("Btn_Settings")));
+		UButton* Credits = Cast<UButton>(Menu->GetWidgetFromName(TEXT("Btn_Credits")));
+		UButton* Back = Cast<UButton>(Menu->GetWidgetFromName(TEXT("Btn_Back")));
+		UWidget* Actions = Menu->GetWidgetFromName(TEXT("MenuActions"));
+		UWidget* Details = Menu->GetWidgetFromName(TEXT("MenuDetails"));
+		UTextBlock* DetailsTitle = Cast<UTextBlock>(Menu->GetWidgetFromName(TEXT("Txt_DetailsTitle")));
+		UTextBlock* DetailsBody = Cast<UTextBlock>(Menu->GetWidgetFromName(TEXT("Txt_DetailsBody")));
 		UTextBlock* Status = Cast<UTextBlock>(Menu->GetWidgetFromName(TEXT("Txt_Status")));
 		if (!TestNotNull(TEXT("Start binding target exists"), Start) ||
 			!TestNotNull(TEXT("Quit binding target exists"), Quit) ||
+			!TestNotNull(TEXT("Settings binding target exists"), Settings) ||
+			!TestNotNull(TEXT("Credits binding target exists"), Credits) ||
+			!TestNotNull(TEXT("Back binding target exists"), Back) ||
+			!TestNotNull(TEXT("The main actions page exists"), Actions) ||
+			!TestNotNull(TEXT("The details page exists"), Details) ||
+			!TestNotNull(TEXT("The details page has a title"), DetailsTitle) ||
+			!TestNotNull(TEXT("The details page has body text"), DetailsBody) ||
 			!TestNotNull(TEXT("Status binding target exists"), Status))
 		{
 			continue;
@@ -543,15 +557,43 @@ bool FAesirMenuWidgetActionsTest::RunTest(const FString& Parameters)
 		UCanvasPanel* ObserverParent = NewObject<UCanvasPanel>(Menu);
 		UTextBlock* StartObserver = NewObject<UTextBlock>(Menu);
 		UTextBlock* QuitObserver = NewObject<UTextBlock>(Menu);
+		UTextBlock* SettingsObserver = NewObject<UTextBlock>(Menu);
+		UTextBlock* CreditsObserver = NewObject<UTextBlock>(Menu);
 		ObserverParent->AddChildToCanvas(StartObserver);
 		ObserverParent->AddChildToCanvas(QuitObserver);
+		ObserverParent->AddChildToCanvas(SettingsObserver);
+		ObserverParent->AddChildToCanvas(CreditsObserver);
 		Menu->OnStartRequested.Add(RemovalObserver(StartObserver));
 		Menu->OnQuitRequested.Add(RemovalObserver(QuitObserver));
+		Menu->OnSettingsRequested.Add(RemovalObserver(SettingsObserver));
+		Menu->OnCreditsRequested.Add(RemovalObserver(CreditsObserver));
 		Start->OnClicked.Broadcast();
 		TestNotNull(TEXT("A disabled Start delivers no event"), StartObserver->GetParent());
 		Menu->SetStartAvailability(true, FText::GetEmpty());
 		TestTrue(TEXT("Readiness enables the Start button"), Start->GetIsEnabled());
 		TestEqual(TEXT("An empty status frees the status area"), Status->GetVisibility(), ESlateVisibility::Collapsed);
+		Settings->OnClicked.Broadcast();
+		TestNull(TEXT("Settings automatically broadcasts its action"), SettingsObserver->GetParent());
+		TestEqual(TEXT("Settings hides the main actions"), Actions->GetVisibility(), ESlateVisibility::Collapsed);
+		TestTrue(TEXT("Settings displays the details page"), Details->IsVisible());
+		TestTrue(TEXT("Settings displays its own title"), DetailsTitle->GetText().EqualTo(FText::FromString(TEXT("设置"))));
+		TestFalse(TEXT("Settings has explanatory content"), DetailsBody->GetText().IsEmpty());
+		Start->OnClicked.Broadcast();
+		TestNotNull(TEXT("A hidden Start cannot bypass the details page"), StartObserver->GetParent());
+		Back->OnClicked.Broadcast();
+		TestEqual(TEXT("Back closes the settings page"), Details->GetVisibility(), ESlateVisibility::Collapsed);
+		TestTrue(TEXT("Back restores the main actions"), Actions->IsVisible());
+		TestTrue(TEXT("Returning from settings preserves readiness"), Start->GetIsEnabled());
+		Credits->OnClicked.Broadcast();
+		TestNull(TEXT("Credits automatically broadcasts its action"), CreditsObserver->GetParent());
+		TestTrue(TEXT("Credits displays its own title"), DetailsTitle->GetText().EqualTo(FText::FromString(TEXT("制作人员"))));
+		TestTrue(TEXT("Credits displays the details page"), Details->IsVisible());
+		Menu->SetStartAvailability(false, FText::GetEmpty());
+		Back->OnClicked.Broadcast();
+		TestEqual(TEXT("Back closes the credits page"), Details->GetVisibility(), ESlateVisibility::Collapsed);
+		TestTrue(TEXT("Back from credits restores the main actions"), Actions->IsVisible());
+		TestFalse(TEXT("Returning from credits respects updated readiness"), Start->GetIsEnabled());
+		Menu->SetStartAvailability(true, FText::GetEmpty());
 		Start->OnClicked.Broadcast();
 		TestNull(TEXT("Start automatically broadcasts its action"), StartObserver->GetParent());
 		Quit->OnClicked.Broadcast();
@@ -693,7 +735,9 @@ bool FAesirCampfireSitFlowTest::RunTest(const FString& Parameters)
 #include "Combat/AesirHealthComponent.h"
 #include "Components/Button.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/TextBlock.h"
 #include "Engine/GameViewportClient.h"
+#include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Framework/Flow/AesirCampfireStart.h"
@@ -853,6 +897,72 @@ private:
 		return Waiting && Waiting->GetPropertyValue_InContainer(Campfire);
 	}
 
+	bool CheckMenuPresentation()
+	{
+		// Inspect geometry after the real viewport has painted, so DPI and the saved
+		// Designer tree participate in these user-facing layout checks.
+		UWidget* Root = Menu->GetWidgetFromName(TEXT("MenuRoot"));
+		UWidget* Logo = Menu->GetWidgetFromName(TEXT("Img_Logo"));
+		if (!Root || !Logo)
+		{
+			Fail(TEXT("The displayed menu is missing its canvas or title logo."));
+			return false;
+		}
+		const FGeometry& RootGeometry = Root->GetCachedGeometry();
+		const FVector2D CanvasSize = RootGeometry.GetLocalSize();
+		const FGeometry& LogoGeometry = Logo->GetCachedGeometry();
+		const FVector2D LogoCenter = RootGeometry.AbsoluteToLocal(
+			LogoGeometry.LocalToAbsolute(LogoGeometry.GetLocalSize() * 0.5f));
+		if (CanvasSize.X <= 0.0f || CanvasSize.Y <= 0.0f ||
+			!FMath::IsNearlyEqual(LogoCenter.X / CanvasSize.X, 0.618034, 0.01) ||
+			!FMath::IsNearlyEqual(LogoCenter.Y / CanvasSize.Y, 0.381966, 0.01))
+		{
+			Fail(FString::Printf(TEXT("The rendered logo is not centered on the requested golden-section intersection: canvas=(%.1f, %.1f), logo=(%.1f, %.1f)."),
+				CanvasSize.X, CanvasSize.Y, LogoCenter.X, LogoCenter.Y));
+			return false;
+		}
+		float PreviousBottom = RootGeometry.AbsoluteToLocal(
+			LogoGeometry.LocalToAbsolute(FVector2D(0.0f, LogoGeometry.GetLocalSize().Y))).Y;
+		const TCHAR* ButtonNames[] = { TEXT("Btn_Start"), TEXT("Btn_Settings"), TEXT("Btn_Credits"), TEXT("Btn_Quit") };
+		const TCHAR* LabelNames[] = { TEXT("Txt_Start"), TEXT("Txt_Settings"), TEXT("Txt_Credits"), TEXT("Txt_Quit") };
+		for (int32 Index = 0; Index < UE_ARRAY_COUNT(ButtonNames); ++Index)
+		{
+			UButton* Button = Cast<UButton>(Menu->GetWidgetFromName(ButtonNames[Index]));
+			UTextBlock* Label = Cast<UTextBlock>(Menu->GetWidgetFromName(LabelNames[Index]));
+			if (!Button || !Label || Label->GetFont().Size != 55)
+			{
+				Fail(FString::Printf(TEXT("Action %s is missing or its text is not size 55."), ButtonNames[Index]));
+				return false;
+			}
+			const FGeometry& ButtonGeometry = Button->GetCachedGeometry();
+			const FVector2D TopLeft = RootGeometry.AbsoluteToLocal(ButtonGeometry.LocalToAbsolute(FVector2D::ZeroVector));
+			const FVector2D BottomRight = RootGeometry.AbsoluteToLocal(ButtonGeometry.LocalToAbsolute(ButtonGeometry.GetLocalSize()));
+			if (!Button->IsVisible() || !FMath::IsNearlyEqual((TopLeft.X + BottomRight.X) / (2.0 * CanvasSize.X), 0.618034, 0.01) ||
+				TopLeft.X < 0.0f || BottomRight.X > CanvasSize.X || BottomRight.Y > CanvasSize.Y ||
+				TopLeft.Y < PreviousBottom || BottomRight.Y <= TopLeft.Y)
+			{
+				Fail(FString::Printf(TEXT("Action %s is not fully visible below the logo on the shared menu axis."), ButtonNames[Index]));
+				return false;
+			}
+			PreviousBottom = BottomRight.Y;
+			const FButtonStyle& Style = Button->GetStyle();
+			for (const FSlateBrush* Brush : { &Style.Normal, &Style.Hovered, &Style.Pressed, &Style.Disabled })
+			{
+				const UTexture2D* Texture = Cast<UTexture2D>(Brush->GetResourceObject());
+				if (Brush->DrawAs != ESlateBrushDrawType::NoDrawType &&
+					Brush->TintColor.GetSpecifiedColor().A > KINDA_SMALL_NUMBER &&
+					Button->GetBackgroundColor().A > KINDA_SMALL_NUMBER && (!Texture || !Texture->HasAlphaChannel()))
+				{
+					Fail(FString::Printf(TEXT("Action %s has an opaque color or texture brush instead of a transparent border."), ButtonNames[Index]));
+					return false;
+				}
+			}
+		}
+		UE_LOG(LogAesirWarden, Display, TEXT("START_MENU_PRESENTATION_PASS: rendered logo center=(%.4f, %.4f); four ordered actions share x=0.618, remain on screen, use size 55 text and alpha-capable border brushes."),
+			LogoCenter.X / CanvasSize.X, LogoCenter.Y / CanvasSize.Y);
+		return true;
+	}
+
 	void Tick()
 	{
 		if (bFinished)
@@ -993,6 +1103,10 @@ private:
 			}
 			// Let the renderer save the menu image before dispatching the real button event.
 			if (!FPaths::FileExists(MenuScreenshot))
+			{
+				return;
+			}
+			if (!CheckMenuPresentation())
 			{
 				return;
 			}

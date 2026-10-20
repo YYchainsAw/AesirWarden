@@ -4,6 +4,7 @@
 #include "AesirWarden.h"
 
 #if WITH_EDITOR
+#include "Animation/WidgetAnimation.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "Blueprint/WidgetTree.h"
@@ -13,6 +14,8 @@
 #include "Engine/BlueprintGeneratedClass.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/Font.h"
+#include "Engine/FontFace.h"
+#include "Fonts/CompositeFont.h"
 #include "Framework/Flow/AesirCampfireStart.h"
 #include "HAL/FileManager.h"
 #include "Kismet2/CompilerResultsLog.h"
@@ -189,6 +192,89 @@ bool UAesirStartMenuEditorLibrary::CreateStartMenuAssets()
 	return true;
 #else
 	UE_LOG(LogAesirWarden, Warning, TEXT("Start menu asset creation is available only in the editor."));
+	return false;
+#endif
+}
+
+bool UAesirStartMenuEditorLibrary::RebuildCampfireMenuLayout()
+{
+#if WITH_EDITOR
+	using namespace AesirStartMenuEditor;
+	UFontFace* Face = LoadObject<UFontFace>(nullptr,
+		TEXT("/Game/Aesir/UI/Fonts/FF_SourceHanSerifSC_Regular.FF_SourceHanSerifSC_Regular"));
+	UFont* Font = LoadObject<UFont>(nullptr, TEXT("/Game/Aesir/UI/Fonts/F_MenuSerif.F_MenuSerif"), nullptr, LOAD_NoWarn);
+	if (!Face)
+	{
+		UE_LOG(LogAesirWarden, Error, TEXT("Menu layout: import the Source Han Serif font face before rebuilding."));
+		return false;
+	}
+	if (!Font)
+	{
+		UPackage* FontPackage = CreatePackage(TEXT("/Game/Aesir/UI/Fonts/F_MenuSerif"));
+		Font = NewObject<UFont>(FontPackage, TEXT("F_MenuSerif"), RF_Public | RF_Standalone);
+		Font->FontCacheType = EFontCacheType::Runtime;
+		FTypefaceEntry& Typeface = Font->GetMutableInternalCompositeFont().DefaultTypeface.Fonts.AddDefaulted_GetRef();
+		Typeface.Name = TEXT("Regular");
+		Typeface.Font = FFontData(Face);
+		FAssetRegistryModule::AssetCreated(Font);
+		const FString Filename = FPackageName::LongPackageNameToFilename(FontPackage->GetName(), FPackageName::GetAssetPackageExtension());
+		FSavePackageArgs Args;
+		Args.TopLevelFlags = RF_Public | RF_Standalone;
+		if (!UPackage::SavePackage(FontPackage, Font, *Filename, Args))
+		{
+			return false;
+		}
+	}
+	UWidgetBlueprint* Blueprint = LoadObject<UWidgetBlueprint>(nullptr,
+		TEXT("/Game/Aesir/UI/Menus/WBP_CampfireMainMenu.WBP_CampfireMainMenu"));
+	if (!Blueprint || Blueprint->ParentClass != UAesirMainMenuWidget::StaticClass())
+	{
+		UE_LOG(LogAesirWarden, Error, TEXT("Menu layout: expected the existing campfire Widget Blueprint and native parent."));
+		return false;
+	}
+	Blueprint->Modify();
+	Blueprint->WidgetTree = NewObject<UWidgetTree>(Blueprint,
+		MakeUniqueObjectName(Blueprint, UWidgetTree::StaticClass(), TEXT("GoldenMenuWidgetTree")), RF_Transactional);
+	UAesirMainMenuWidget::BuildDefaultMenuTree(Blueprint->WidgetTree);
+	TSet<FName> LayoutWidgetNames;
+	Blueprint->ForEachSourceWidget([Blueprint, &LayoutWidgetNames](UWidget* Widget)
+	{
+		LayoutWidgetNames.Add(Widget->GetFName());
+		if (!Blueprint->WidgetVariableNameToGuidMap.Contains(Widget->GetFName()))
+		{
+			Blueprint->OnVariableAdded(Widget->GetFName());
+		}
+	});
+	for (UWidgetAnimation* Animation : Blueprint->Animations)
+	{
+		if (Animation)
+		{
+			LayoutWidgetNames.Add(Animation->GetFName());
+			if (!Blueprint->WidgetVariableNameToGuidMap.Contains(Animation->GetFName()))
+			{
+				Blueprint->OnVariableAdded(Animation->GetFName());
+			}
+		}
+	}
+	// Keep matching widgets' GUIDs for existing graphs, but retire Designer widgets
+	// removed by this explicitly requested layout replacement before compiling.
+	for (auto It = Blueprint->WidgetVariableNameToGuidMap.CreateIterator(); It; ++It)
+	{
+		if (!LayoutWidgetNames.Contains(It.Key()))
+		{
+			It.RemoveCurrent();
+		}
+	}
+	Blueprint->MarkPackageDirty();
+	if (!CompileBlueprint(Blueprint))
+	{
+		return false;
+	}
+	UUserWidget* Defaults = Blueprint->GeneratedClass->GetDefaultObject<UUserWidget>();
+	Defaults->DesignTimeSize = FVector2D(1920.0, 1080.0);
+	Defaults->DesignSizeMode = EDesignPreviewSizeMode::FillScreen;
+	return SaveBlueprint(Blueprint);
+#else
 	return false;
 #endif
 }

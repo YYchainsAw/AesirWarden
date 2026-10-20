@@ -16,4 +16,8 @@ public:
 	/** Create the campfire actor and menu assets once, preserving existing user-authored assets. */
 	UFUNCTION(BlueprintCallable, Category = "Aesir|Editor", meta = (DevelopmentOnly))
 	static bool CreateStartMenuAssets();
+
+	/** Explicitly replace only the menu Designer tree with the transparent golden-section layout. */
+	UFUNCTION(BlueprintCallable, Category = "Aesir|Editor", meta = (DevelopmentOnly))
+	static bool RebuildCampfireMenuLayout();
 };

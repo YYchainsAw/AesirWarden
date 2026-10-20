@@ -8,6 +8,7 @@
 
 class UButton;
 class UTextBlock;
+class UWidget;
 class UWidgetTree;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FAesirMainMenuActionRequested);
@@ -27,11 +28,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Aesir|Main Menu")
 	void FocusDefaultAction();
 
+	/** Restore the four main actions after a settings or credits page. */
+	UFUNCTION(BlueprintCallable, Category = "Aesir|Main Menu")
+	void ReturnToMainMenu();
+
 	UPROPERTY(BlueprintAssignable, Category = "Aesir|Main Menu")
 	FAesirMainMenuActionRequested OnStartRequested;
 
 	UPROPERTY(BlueprintAssignable, Category = "Aesir|Main Menu")
 	FAesirMainMenuActionRequested OnQuitRequested;
+
+	UPROPERTY(BlueprintAssignable, Category = "Aesir|Main Menu")
+	FAesirMainMenuActionRequested OnSettingsRequested;
+
+	UPROPERTY(BlueprintAssignable, Category = "Aesir|Main Menu")
+	FAesirMainMenuActionRequested OnCreditsRequested;
 
 	/** Shared by the native fallback and the editor scaffold; leaves an authored tree intact. */
 	static void BuildDefaultMenuTree(UWidgetTree* InWidgetTree);
@@ -40,6 +51,14 @@ protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+
+	/** Extend or replace the default information page in a Blueprint child. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Aesir|Main Menu", meta = (DisplayName = "On Settings Opened"))
+	void ReceiveSettingsOpened();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Aesir|Main Menu", meta = (DisplayName = "On Credits Opened"))
+	void ReceiveCreditsOpened();
 
 	/** Keep these names in a Blueprint child to retain automatic native wiring. */
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "Aesir|Main Menu")
@@ -47,6 +66,27 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "Aesir|Main Menu")
 	TObjectPtr<UButton> Btn_Quit;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "Aesir|Main Menu")
+	TObjectPtr<UButton> Btn_Settings;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "Aesir|Main Menu")
+	TObjectPtr<UButton> Btn_Credits;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "Aesir|Main Menu")
+	TObjectPtr<UButton> Btn_Back;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "Aesir|Main Menu")
+	TObjectPtr<UWidget> MenuActions;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "Aesir|Main Menu")
+	TObjectPtr<UWidget> MenuDetails;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "Aesir|Main Menu")
+	TObjectPtr<UTextBlock> Txt_DetailsTitle;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "Aesir|Main Menu")
+	TObjectPtr<UTextBlock> Txt_DetailsBody;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "Aesir|Main Menu")
 	TObjectPtr<UTextBlock> Txt_Status;
@@ -59,10 +99,21 @@ protected:
 
 private:
 	void RefreshAvailability();
+	void ShowDetails(FText Title, FText Body);
+	bool bShowingDetails = false;
 
 	UFUNCTION()
 	void HandleStartClicked();
 
 	UFUNCTION()
 	void HandleQuitClicked();
+
+	UFUNCTION()
+	void HandleSettingsClicked();
+
+	UFUNCTION()
+	void HandleCreditsClicked();
+
+	UFUNCTION()
+	void HandleBackClicked();
 };
