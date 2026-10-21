@@ -3,7 +3,9 @@
 #include "UI/AesirSettingsMenuWidget.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Brushes/SlateColorBrush.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
+#include "Components/BackgroundBlur.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
@@ -19,6 +21,42 @@
 #include "Engine/Texture2D.h"
 
 #define LOCTEXT_NAMESPACE "AesirSettingsLayout"
+
+bool UAesirSettingsMenuWidget::EnsureSettingsBackdrop(UWidgetTree* Tree)
+{
+	UCanvasPanel* Root = IsValid(Tree) ? Cast<UCanvasPanel>(Tree->RootWidget) : nullptr;
+	if (!Root) return false;
+	bool bAdded = false;
+	auto FillScreen = [Root](UWidget* Widget, int32 ZOrder)
+	{
+		Widget->bIsVariable = false;
+		Widget->SetVisibility(ESlateVisibility::HitTestInvisible);
+		UCanvasPanelSlot* Slot = Root->AddChildToCanvas(Widget);
+		Slot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
+		Slot->SetOffsets(FMargin(0.0f));
+		Slot->SetZOrder(ZOrder);
+	};
+	if (!Tree->FindWidget(TEXT("Blur_SettingsBackdrop")))
+	{
+		UBackgroundBlur* Blur = Tree->ConstructWidget<UBackgroundBlur>(UBackgroundBlur::StaticClass(), TEXT("Blur_SettingsBackdrop"));
+		Blur->SetBlurStrength(8.0f);
+		Blur->SetApplyAlphaToBlur(false);
+		Blur->SetPadding(FMargin(0.0f));
+		Blur->SetLowQualityFallbackBrush(FSlateColorBrush(FLinearColor(0.008f, 0.012f, 0.019f, 0.25f)));
+		// UI is a separate higher Canvas sibling, so only the scene is blurred.
+		FillScreen(Blur, -20);
+		bAdded = true;
+	}
+	if (!Tree->FindWidget(TEXT("Img_SettingsBackdropDim")))
+	{
+		UImage* Dim = Tree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Img_SettingsBackdropDim"));
+		Dim->SetBrush(FSlateColorBrush(FLinearColor::White));
+		Dim->SetColorAndOpacity(FLinearColor(0.008f, 0.012f, 0.019f, 0.45f));
+		FillScreen(Dim, -10);
+		bAdded = true;
+	}
+	return bAdded;
+}
 
 void UAesirSettingsMenuWidget::BuildDefaultSettingsTree(UWidgetTree* Tree)
 {
@@ -201,6 +239,7 @@ void UAesirSettingsMenuWidget::BuildDefaultSettingsTree(UWidgetTree* Tree)
 	UCanvasPanel* Root = Tree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("SettingsRoot"));
 	Root->bIsVariable = false;
 	Tree->RootWidget = Root;
+	EnsureSettingsBackdrop(Tree);
 	UOverlay* Surface = Tree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("SettingsSurface"));
 	Surface->bIsVariable = false;
 	Place(Root, Surface, FVector2D::ZeroVector, FVector2D(1280.0f, 760.0f), FVector2D(0.5f, 0.5f), FVector2D(0.5f, 0.5f));

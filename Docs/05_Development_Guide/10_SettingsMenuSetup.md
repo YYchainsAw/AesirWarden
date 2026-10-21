@@ -2,7 +2,7 @@
 
 设置页使用独立蓝图 `/Game/Aesir/UI/Menus/WBP_SettingsMenu`，原生父类为 `AesirSettingsMenuWidget`。从营火主菜单点击现有“设置”按钮即可进入；关闭后返回原主菜单，焦点回到“设置”。进入设置时整个主菜单临时隐藏，因此原 Logo 和按钮不会叠在设置页之上。
 
-设置页沿用 `F_MenuSerif` 字体和已有 Kenney 金色边框、分割线，面板和按钮中心透明。下拉列表展开时使用局部深色底，便于阅读选项。原主菜单的 Designer 布局、地图和玩家蓝图均不需要重新摆放或接线。
+设置页沿用 `F_MenuSerif` 字体和已有 Kenney 金色边框、分割线，面板和按钮中心透明。打开时，背景场景由全屏 Background Blur 模糊，并叠加半透明深色蒙版；文字、按钮和确认弹窗位于模糊层上方。下拉列表展开时使用局部深色底，便于阅读选项。原主菜单的 Designer 布局、地图和玩家蓝图均不需要重新摆放或接线。
 
 ## 第一次恢复设置页资产
 
@@ -18,7 +18,7 @@ import setup_settings_menu
 setup_settings_menu.setup_settings_menu()
 ```
 
-日志应出现 `SETTINGS_MENU_ASSET_PASS`，报告位于 `Saved/UI/SettingsMenu/asset_setup.json`。脚本首次创建完整、可编辑的 Designer 控件树；再次运行会验证现有名称、类型、父类和编译结果，保留已调整的布局。存在同名但父类不兼容的资产、未保存的蓝图或缺少必要控件时会停止，不覆盖原资产。
+日志应出现 `SETTINGS_MENU_ASSET_PASS`，报告位于 `Saved/UI/SettingsMenu/asset_setup.json`。脚本首次创建完整、可编辑的 Designer 控件树；再次运行会补入缺少的全屏背景层，验证现有名称、类型、父类和编译结果，保留已调整的控件布局与背景参数。存在同名但父类不兼容的资产、未保存的蓝图或缺少必要控件时会停止，不覆盖原资产。
 
 如果资产已经存在，执行前会把 `WBP_SettingsMenu.uasset` 及存在的 `.uexp/.ubulk` 备份至 `Saved/UI/SettingsMenu/BeforeSetup/<时间戳>/`，附带 SHA256 manifest。需要恢复时关闭 UE，按 manifest 中的 `source` 路径复制回对应备份文件，再重新打开检查。
 
@@ -57,10 +57,14 @@ Esc 或手柄 B 对应“返回”；已有放弃确认时对应“继续调整�
 
 默认下拉框高 `72`、字号 `30`，Content Padding 和 Button Style 的 Normal/Pressed Padding 的纵向值均为 `0`。Slate 会叠加这两层内边距，SourceHanSerif 的完整中文行高较大；缩小控件时需同时检查所选文字与展开列表，避免文字底部被裁掉。
 
+背景效果可直接在根 Canvas 下调整：选中 `Blur_SettingsBackdrop` 修改 **Blur Strength**（默认 `8`）；选中 `Img_SettingsBackdropDim` 修改 **Color and Opacity → A**（默认 `0.45`）。两者均以 `(0,0)～(1,1)` 锚点铺满屏幕、Offsets 为 `0`，Z Order 分别为 `-20/-10`，`SettingsSurface` 在上方。不要把菜单内容放入模糊层的下方。关闭设置页时整个控件移出视口，模糊和蒙版同步消失；确认弹窗期间保留背景效果。
+
 保留功能控件的名称、类型和四页顺序，运行时即可沿用原生自动绑定。可以移动控件和更换外观；不要给同一个值再添加第二套 Percent/Value 绑定或 Tick 更新，否则可能覆盖会话中的待应用值。
 
 | 名称 | 类型 | 用途 |
 | --- | --- | --- |
+| `Blur_SettingsBackdrop` | Background Blur | 全屏背景模糊，位于设置面板下方。 |
+| `Img_SettingsBackdropDim` | Image | 全屏深色半透明蒙版。 |
 | `SettingsContent` | 容器 | 普通设置内容；弹窗时隐藏。 |
 | `SettingsPages` | Widget Switcher | 子页顺序为显示、画质、声音、操作。 |
 | `Page_Display` / `Page_Quality` / `Page_Audio` / `Page_Controls` | Canvas Panel | 默认四页内容容器。 |
@@ -115,5 +119,6 @@ Main 检查需以独立 `UnrealEditor.exe ... -game -windowed -ResX=1920 -ResY=1
 | 最终设置测试 | 调整字体布局及配置恢复 fixture 后，`Aesir.Settings` 9 项通过、0 失败、0 警告；报告 `Saved/Settings/AutomationPreserved/index.json`，日志 `Saved/Logs/SettingsPreservedTests.log`。包含真实控件事件、保存重载、预览确认/取消/销毁、15 秒真实超时、窗口先被外部调整后的回滚。 |
 | 配置恢复 | 测试结束后核对项目和用户目录的设置文件。引擎启动单独更新的最近打开时间在关闭辅助进程后恢复；三个受核对文件 SHA256 与运行前一致，记录 `Saved/Settings/BeforeFinalVerification/result.json`。 |
 | Main 实机界面 | 独立 `/Game/Main`、1920×1080 通过 `SETTINGS_MAIN_SMOKE_PASS`。四个分类、返回和丢弃流程通过；逐张检查透明边框、字体与数值，下拉框文字完整。最新日志 `Saved/Logs/SettingsMainSmoke.log`，五张截图 `Saved/Settings/Preview/`。 |
+| 背景模糊与蒙版增量 | 完整编译通过；在保留现有控件布局的基础上加入背景层，蓝图编译 0 错误。1920×1080 再次通过 `SETTINGS_MAIN_SMOKE_PASS`，目视确认背景全屏模糊并压暗、文字和确认弹窗清晰，返回恢复主菜单；日志 `Saved/Logs/SettingsBackdropSmoke.log`，更新截图 `Saved/Settings/Preview/`。 |
 
 本轮未进行 cooked Windows 包验收。原主菜单用户布局、地图和玩家蓝图未重新保存；此次新建的设置蓝图在排版修复前备份于 `Saved/UI/SettingsMenu/BeforeTypographyFix/`。

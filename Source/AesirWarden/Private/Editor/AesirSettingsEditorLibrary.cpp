@@ -8,9 +8,11 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "Blueprint/WidgetTree.h"
+#include "Components/BackgroundBlur.h"
 #include "Components/Button.h"
 #include "Components/CheckBox.h"
 #include "Components/ComboBoxString.h"
+#include "Components/Image.h"
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
 #include "Components/WidgetSwitcher.h"
@@ -55,6 +57,8 @@ namespace AesirSettingsEditor
 		bValid &= Require(TEXT("SettingsContent"), UWidget::StaticClass());
 		bValid &= Require(TEXT("ConfirmPanel"), UWidget::StaticClass());
 		bValid &= Require(TEXT("SettingsPages"), UWidgetSwitcher::StaticClass());
+		bValid &= Require(TEXT("Blur_SettingsBackdrop"), UBackgroundBlur::StaticClass());
+		bValid &= Require(TEXT("Img_SettingsBackdropDim"), UImage::StaticClass());
 		if (UWidgetSwitcher* Pages = Cast<UWidgetSwitcher>(Blueprint->WidgetTree->FindWidget(TEXT("SettingsPages"))))
 		{
 			if (Pages->GetChildrenCount() != 4)
@@ -110,10 +114,11 @@ bool UAesirSettingsEditorLibrary::CreateSettingsMenuAsset()
 		if (!Blueprint->WidgetTree) Blueprint->WidgetTree = NewObject<UWidgetTree>(Blueprint, TEXT("WidgetTree"), RF_Transactional);
 		UAesirSettingsMenuWidget::BuildDefaultSettingsTree(Blueprint->WidgetTree);
 	}
+	const bool bBackdropAdded = UAesirSettingsMenuWidget::EnsureSettingsBackdrop(Blueprint->WidgetTree);
 	if (!AesirSettingsEditor::Validate(Blueprint)) return false;
 
 	// UE 5.8 requires widget GUID metadata for non-variable Designer containers too.
-	bool bRepaired = false;
+	bool bRepaired = bBackdropAdded;
 	Blueprint->ForEachSourceWidget([Blueprint, &bRepaired](UWidget* Widget)
 	{
 		if (!Blueprint->WidgetVariableNameToGuidMap.Contains(Widget->GetFName()))

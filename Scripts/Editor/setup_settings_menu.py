@@ -5,7 +5,7 @@ UnrealEditor-Cmd.exe AesirWarden.uproject /Engine/Maps/Entry
 -EnablePlugins=PythonScriptPlugin -ExecutePythonScript=".../setup_settings_menu.py"
 -unattended -NullRHI -nosound
 
-Only WBP_SettingsMenu is created or metadata-repaired. No map, main-menu Blueprint,
+Only WBP_SettingsMenu is created, metadata-repaired or given missing backdrop layers. No map, main-menu Blueprint,
 player Blueprint, third-party source file or texture is imported or changed.
 """
 
@@ -76,7 +76,7 @@ def setup_settings_menu():
         "textures_imported": 0,
         "design_size": [1920, 1080],
         "surface": {"size": [1280, 760], "anchor": [0.5, 0.5], "alignment": [0.5, 0.5]},
-        "appearance": "Transparent panel/button centres, Kenney gold borders, F_MenuSerif; local dropdown popup has a dark background.",
+        "appearance": "Fullscreen background blur and dark veil behind transparent panel/button centres, Kenney gold borders and F_MenuSerif; dropdown popup has a dark background.",
         "categories": ["Display", "Quality", "Audio", "Controls"],
         "blueprint_errors": 0,
     }

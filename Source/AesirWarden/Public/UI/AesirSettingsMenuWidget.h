@@ -107,6 +107,8 @@ public:
 	FAesirSettingsClosed OnClosed;
 
 	static void BuildDefaultSettingsTree(UWidgetTree* Tree);
+	/** Add missing fullscreen backdrop layers without replacing authored controls. */
+	static bool EnsureSettingsBackdrop(UWidgetTree* Tree);
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;

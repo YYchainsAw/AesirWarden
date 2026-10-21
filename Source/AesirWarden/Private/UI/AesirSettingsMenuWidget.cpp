@@ -40,6 +40,7 @@ namespace AesirSettings
 TSharedRef<SWidget> UAesirSettingsMenuWidget::RebuildWidget()
 {
 	BuildDefaultSettingsTree(WidgetTree);
+	EnsureSettingsBackdrop(WidgetTree);
 	return Super::RebuildWidget();
 }
 
