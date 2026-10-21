@@ -120,9 +120,13 @@ void UAesirSettingsMenuWidget::BuildDefaultSettingsTree(UWidgetTree* Tree)
 		Control->bIsVariable = false;
 		FComboBoxStyle Style = Control->GetWidgetStyle();
 		Style.ComboButtonStyle.ButtonStyle = ButtonStyle(true);
+		// SButton adds its normal/pressed padding to ComboBox content padding.
+		// Leave the full line height available to the CJK serif font.
+		Style.ComboButtonStyle.ButtonStyle.NormalPadding = FMargin(12.0f, 0.0f);
+		Style.ComboButtonStyle.ButtonStyle.PressedPadding = FMargin(12.0f, 0.0f);
 		Style.ComboButtonStyle.MenuBorderBrush = FSlateRoundedBoxBrush(Popup, 0.0f, Gold, 1.0f);
 		Style.ComboButtonStyle.DownArrowImage.TintColor = Ivory;
-		Style.ContentPadding = FMargin(12.0f, 6.0f);
+		Style.ContentPadding = FMargin(12.0f, 0.0f);
 		Style.MenuRowPadding = FMargin(10.0f, 6.0f);
 		Control->SetWidgetStyle(Style);
 		FTableRowStyle Rows = Control->GetItemStyle();
@@ -138,7 +142,7 @@ void UAesirSettingsMenuWidget::BuildDefaultSettingsTree(UWidgetTree* Tree)
 		Rows.TextColor = Ivory;
 		Rows.SelectedTextColor = BrightGold;
 		Control->SetItemStyle(Rows);
-		Control->SetContentPadding(FMargin(12.0f, 6.0f));
+		Control->SetContentPadding(FMargin(12.0f, 0.0f));
 		Control->SetMaxListHeight(360.0f);
 		Control->SetEnableGamepadNavigationMode(true);
 		// UE 5.8 exposes these construction-only properties without public setters.
@@ -233,13 +237,13 @@ void UAesirSettingsMenuWidget::BuildDefaultSettingsTree(UWidgetTree* Tree)
 	auto ComboRow = [Place, RowLabel, Combo](UCanvasPanel* Page, const TCHAR* LabelName, FText Value, const TCHAR* Name, float Y)
 	{
 		RowLabel(Page, LabelName, Value, Y);
-		Place(Page, Combo(FName(Name)), FVector2D(330.0f, Y), FVector2D(414.0f, 56.0f));
+		Place(Page, Combo(FName(Name)), FVector2D(330.0f, Y), FVector2D(414.0f, 72.0f));
 	};
 	ComboRow(PagePanels[0], TEXT("Txt_WindowModeLabel"), LOCTEXT("WindowMode", "窗口模式"), TEXT("Cmb_WindowMode"), 0.0f);
 	ComboRow(PagePanels[0], TEXT("Txt_ResolutionLabel"), LOCTEXT("Resolution", "分辨率"), TEXT("Cmb_Resolution"), 86.0f);
 	UTextBlock* ResolutionHint = Text(TEXT("Txt_ResolutionHint"), LOCTEXT("ResolutionHint", "无边框模式使用桌面分辨率"), 20, ETextJustify::Center);
 	ResolutionHint->SetColorAndOpacity(Muted);
-	Place(PagePanels[0], ResolutionHint, FVector2D(330.0f, 146.0f), FVector2D(414.0f, 30.0f));
+	Place(PagePanels[0], ResolutionHint, FVector2D(330.0f, 164.0f), FVector2D(414.0f, 30.0f));
 	RowLabel(PagePanels[0], TEXT("Txt_VSyncLabel"), LOCTEXT("VSync", "垂直同步"), 200.0f);
 	Place(PagePanels[0], Check(TEXT("Chk_VSync")), FVector2D(350.0f, 212.0f), FVector2D(36.0f, 36.0f));
 	Place(PagePanels[0], Text(TEXT("Txt_VSyncValue"), LOCTEXT("VSyncOff", "关闭"), 28), FVector2D(402.0f, 214.0f), FVector2D(300.0f, 36.0f));
