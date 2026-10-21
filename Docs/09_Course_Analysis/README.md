@@ -1,6 +1,6 @@
 # 课程文档
 
-基线：`COURSE-20261018-R1`。完整需求书在[Word需求文档](Word/AesirWarden需求分析文档.docx)，保留原9章、23条功能需求和18个主要用例；当前仍有未决规则，成员最终模型审查及运行验收尚未完成。
+基线：`COURSE-20261018-R1`。完整需求书在[Word需求文档](Word/AesirWarden需求分析文档.docx)，当前版本1.2共80页，保留原9章、23条功能需求和18个主要用例，并已回填DEP/EVO-20261021扩展；当前仍有未决规则，成员最终模型审查及运行验收尚未完成。
 
 ## 从哪里看
 
@@ -15,7 +15,9 @@
 
 `Evidence/InitialModels`仅保留10份真实AI初稿，供和当前UML对照。分散的阶段目录、生成脚本、JSON清单和检查日志已合并或清理，不另建备份。
 
-2026-10-21新增`DEP-20261021`部署目标，依据[ADR-003](../02_Design_Doc/TDD/Decisions/03_ADR003SplitAIDeployment.md)及[部署说明](../02_Design_Doc/TDD/06_Deployment.md)：Boss本地、远程NPC、玩家/存档隔离、同步、外部ASR与模型分发已由用户采纳。该扩展单列追踪，原COURSE-20261018-R1的Word和图形仍保留其业务/本机联调覆盖范围，本次未回填或重新导出，不以旧图证明新增身份/部署模型完整。
+2026-10-21新增`DEP-20261021`部署目标，依据[ADR-003](../02_Design_Doc/TDD/Decisions/03_ADR003SplitAIDeployment.md)及[部署说明](../02_Design_Doc/TDD/06_Deployment.md)：Boss本地、远程NPC、玩家/存档隔离、同步、外部ASR与模型分发已由用户采纳。随后按用户要求同步Word及目标图形，更新NPC原图并增加A11部署视图，Technical旧图继续标为历史参考；具体导出/回填检查见[建模记录](03_AIModelingEvidence.md)，不以图形完成证明运行部署。
+
+同日用户采纳AIRI研究的五方面20项方案，记为`EVO-20261021`，目标与用例扩展见[NPC交互与服务演进](../02_Design_Doc/TDD/07_NPCInteractionEvolution.md)。原23FR/18UC、NPC9FR/7UC保留，新增机制通过既有用例的步骤/异常扩展及NPC-EVO检查追踪；VAD/TTS/打断为后置扩展，不冒充原FR已覆盖或已实现。MCP图形修订与Desktop预览已纳入[模型索引](../UML/README.md#evo-20261021模型同步计划)，Word在保留九章的基础上回填同一目标范围；人工接受及运行验收仍分别登记。
 
 ## 范围和维护
 
@@ -37,6 +39,7 @@
 | SRC-08 | [检查清单](../06_Test_Doc/01_VerificationMatrix.md)、[已知问题](../06_Test_Doc/02_KnownIssues.md)、[发布检查](../07_Release/01_ReleaseChecklist.md) |
 | SRC-09 | [真实需求问答和用户反馈](03_AIModelingEvidence.md)，2026-10-18；需求确认与模型接受、运行通过分别记录 |
 | SRC-10 | DEP-20261021：用户采纳新增部署建议并要求同步两仓文档；目标以ADR-003和部署说明为准，未实施远程部署或补造跨成员签署 |
+| SRC-11 | EVO-20261021：用户采纳对话编排、实时语音、游戏Agent、记忆及云端服务20项方案并要求结合实际写入文档；目标/对应关系见演进页，模型同步和运行验收分别登记，不据用户采纳补造服务负责人签署 |
 
 原Word位于`C:/Users/YYchainsaw/Documents/AesirWarden课程材料/AesirWarde需求分析文档.docx`；外部原件未修改。核心规则和分析已写入Word，评阅者无需依靠该本机路径理解正文。
 

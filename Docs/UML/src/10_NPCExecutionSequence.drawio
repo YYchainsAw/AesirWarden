@@ -1,2 +1,166 @@
 <?xml version='1.0' encoding='utf-8'?>
-<mxfile host="app.diagrams.net"><diagram id="course" name="分析时序"><mxGraphModel dx="1540" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1840" pageHeight="1720" math="0" shadow="0" background="#ffffff" adaptiveColors="auto"><root><mxCell id="0" /><mxCell id="1" parent="0" /><mxCell id="A10_2" value="A10  NPC指令执行分析时序" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=27;fontStyle=1;spacing=0;" vertex="1" parent="1"><mxGeometry as="geometry" x="30" y="20" width="1780" height="38" /></mxCell><mxCell id="A10_3" value="COURSE-20261018-R1 · 分析目标视图 · NPC-UC02/05 · BR-NPC-01～04 · UE校验与真实阶段回执" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1"><mxGeometry as="geometry" x="30" y="66" width="1780" height="40" /></mxCell><mxCell id="A10_4" value="玩家（文本指令来源）" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;rounded=0;fillColor=#eaf2fa;strokeColor=#6686a6;fontSize=18;fontStyle=1;" vertex="1" parent="1"><mxGeometry as="geometry" x="45" y="140" width="270" height="75" /></mxCell><mxCell id="A10_5" value="" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;dashed=1;dashPattern=5 5;strokeColor=#8b9bab;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="180" y="215" /><mxPoint as="targetPoint" x="180" y="1635" /></mxGeometry></mxCell><mxCell id="A10_6" value="UE接入边界&lt;br&gt;校验与回执" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;rounded=0;fillColor=#eaf2fa;strokeColor=#6686a6;fontSize=18;fontStyle=1;" vertex="1" parent="1"><mxGeometry as="geometry" x="535" y="140" width="270" height="75" /></mxCell><mxCell id="A10_7" value="" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;dashed=1;dashPattern=5 5;strokeColor=#8b9bab;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="670" y="215" /><mxPoint as="targetPoint" x="670" y="1635" /></mxGeometry></mxCell><mxCell id="A10_8" value="同伴服务&lt;br&gt;含建议生成与上下文" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;rounded=0;fillColor=#eaf2fa;strokeColor=#6686a6;fontSize=18;fontStyle=1;" vertex="1" parent="1"><mxGeometry as="geometry" x="1025" y="140" width="270" height="75" /></mxCell><mxCell id="A10_9" value="" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;dashed=1;dashPattern=5 5;strokeColor=#8b9bab;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="1160" y="215" /><mxPoint as="targetPoint" x="1160" y="1635" /></mxGeometry></mxCell><mxCell id="A10_10" value="UE / GAS执行器" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;rounded=0;fillColor=#eaf2fa;strokeColor=#6686a6;fontSize=18;fontStyle=1;" vertex="1" parent="1"><mxGeometry as="geometry" x="1515" y="140" width="270" height="75" /></mxCell><mxCell id="A10_11" value="" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;dashed=1;dashPattern=5 5;strokeColor=#8b9bab;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="1650" y="215" /><mxPoint as="targetPoint" x="1650" y="1635" /></mxGeometry></mxCell><mxCell id="A10_12" value="1 文本协作输入" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="180" y="275" /><mxPoint as="targetPoint" x="670" y="275" /></mxGeometry></mxCell><mxCell id="A10_13" value="2 请求 + 当前角色/游玩/快照&lt;br&gt;（仅世界事件来源携带eventId）" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="670" y="340" /><mxPoint as="targetPoint" x="1160" y="340" /></mxGeometry></mxCell><mxCell id="A10_14" value="3 建议（directiveId / 有效期 / 条件能力引用）" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=open;endFill=0;endSize=7;dashed=1;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="1160" y="415" /><mxPoint as="targetPoint" x="670" y="415" /></mxGeometry></mxCell><mxCell id="A10_15" value="alt" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;shape=umlFrame;fillColor=none;strokeColor=#8597a8;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;fontSize=16;" vertex="1" parent="1"><mxGeometry as="geometry" x="510" y="455" width="1270" height="745" /></mxCell><mxCell id="A10_16" value="[旧局 / 过期 / 越权 / 语义不合法]" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1"><mxGeometry as="geometry" x="595" y="461" width="1160" height="32" /></mxCell><mxCell id="A10_17" value="4a 拒绝及稳定原因；不执行、不报完成" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="670" y="530" /><mxPoint as="targetPoint" x="1160" y="530" /></mxGeometry></mxCell><mxCell id="A10_18" value="普通指令可无技能；施法须引用本角色获准技能；具体数量DEC-03待定。" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1"><mxGeometry as="geometry" x="535" y="580" width="1215" height="40" /></mxCell><mxCell id="A10_19" value="" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;dashed=1;strokeColor=#8597a8;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="510" y="685" /><mxPoint as="targetPoint" x="1780" y="685" /></mxGeometry></mxCell><mxCell id="A10_20" value="[else：当前有效且首次合法建议]" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=1;spacing=0;" vertex="1" parent="1"><mxGeometry as="geometry" x="535" y="695" width="1215" height="35" /></mxCell><mxCell id="A10_21" value="4b 收到 / 校验通过（仅代表已接收）" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="670" y="755" /><mxPoint as="targetPoint" x="1160" y="755" /></mxGeometry></mxCell><mxCell id="A10_22" value="5 尝试执行（再查实时状态 / 冷却 / 能力）" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="670" y="825" /><mxPoint as="targetPoint" x="1650" y="825" /></mxGeometry></mxCell><mxCell id="A10_23" value="6 [实际启动] started；[启动失败] rejected + reason" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=open;endFill=0;endSize=7;dashed=1;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="1650" y="895" /><mxPoint as="targetPoint" x="670" y="895" /></mxGeometry></mxCell><mxCell id="A10_24" value="7 仅转发实际启动或拒绝阶段" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="670" y="960" /><mxPoint as="targetPoint" x="1160" y="960" /></mxGeometry></mxCell><mxCell id="A10_25" value="8 [仅实际启动后] hit / completed / failed" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=open;endFill=0;endSize=7;dashed=1;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="1650" y="1035" /><mxPoint as="targetPoint" x="670" y="1035" /></mxGeometry></mxCell><mxCell id="A10_26" value="9 真实阶段 / 终态回执（执行键 + 阶段 + 原因）" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="670" y="1110" /><mxPoint as="targetPoint" x="1160" y="1110" /></mxGeometry></mxCell><mxCell id="A10_27" value="启动失败即拒绝终态，不再进入步骤8；并非每条指令都有命中阶段。" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1"><mxGeometry as="geometry" x="535" y="1150" width="1215" height="34" /></mxCell><mxCell id="A10_28" value="opt" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;shape=umlFrame;fillColor=none;strokeColor=#8597a8;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;fontSize=16;" vertex="1" parent="1"><mxGeometry as="geometry" x="510" y="1240" width="1270" height="210" /></mxCell><mxCell id="A10_29" value="[请求重发 / 回执重复或乱序]" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1"><mxGeometry as="geometry" x="595" y="1246" width="1160" height="32" /></mxCell><mxCell id="A10_30" value="10 重发同一执行身份（去重窗口内）" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="1160" y="1305" /><mxPoint as="targetPoint" x="670" y="1305" /></mxGeometry></mxCell><mxCell id="A10_31" value="11 返回已知状态，不再次执行；服务按合法阶段合并" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1"><mxGeometry as="geometry" relative="1"><mxPoint as="sourcePoint" x="670" y="1380" /><mxPoint as="targetPoint" x="1160" y="1380" /></mxGeometry></mxCell><mxCell id="A10_32" value="指令执行键关联gameId、roleId、游玩/遭遇与directiveId；eventId仅用于可信事实事件，不强加给所有文本指令。&lt;br&gt;NPC-UC05从步骤2开始：UE提交可信事件，服务先幂等更新记忆/关系，再复用建议与回执链。&lt;br&gt;有限缓存不承诺跨重启永久恰好一次；LLM/ASR外发与保留见DEC-05。重试失效旧指令，不清长期记忆或关系。" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;shape=note;size=14;fillColor=#fff6dc;strokeColor=#c9ad64;align=left;verticalAlign=top;spacing=12;fontSize=16;" vertex="1" parent="1"><mxGeometry as="geometry" x="65" y="1490" width="1680" height="140" /></mxCell><mxCell id="A10_33" value="当前协议提供的状态与目标阶段须分别核对；本图不宣称服务与游戏已完成上述阶段回传。" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1"><mxGeometry as="geometry" x="70" y="1660" width="1680" height="35" /></mxCell></root></mxGraphModel></diagram></mxfile>
+<mxfile host="app.diagrams.net"><diagram id="course" name="分析时序"><mxGraphModel dx="1540" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1840" pageHeight="2370" math="0" shadow="0" background="#ffffff" adaptiveColors="auto">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+    <mxCell id="A10_2" value="A10  NPC指令执行分析时序" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=27;fontStyle=1;spacing=0;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="30" y="20" width="1780" height="38" />
+    </mxCell>
+    <mxCell id="A10_3" value="DEP / EVO-20261021 · 目标协作 · NPC-UC02/04/05 · 认证 / 持久命令 / 条件触发 / 真实回执" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="30" y="66" width="1780" height="40" />
+    </mxCell>
+    <mxCell id="A10_p" value="玩家&lt;br&gt;文本指令来源" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;rounded=0;fillColor=#eaf2fa;strokeColor=#6686a6;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="45" y="140" width="270" height="75" />
+    </mxCell>
+    <mxCell id="A10_life_p" value="" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;dashed=1;dashPattern=5 5;strokeColor=#8b9bab;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="180" y="215" />
+        <mxPoint as="targetPoint" x="180" y="2185" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_u" value="UE接入边界&lt;br&gt;作用域 / 去重 / 回执" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;rounded=0;fillColor=#eaf2fa;strokeColor=#6686a6;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="535" y="140" width="270" height="75" />
+    </mxCell>
+    <mxCell id="A10_life_u" value="" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;dashed=1;dashPattern=5 5;strokeColor=#8b9bab;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="670" y="215" />
+        <mxPoint as="targetPoint" x="670" y="2185" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_s" value="远程NPC服务&lt;br&gt;认证 / 生成 / 持久记录" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;rounded=0;fillColor=#eaf2fa;strokeColor=#6686a6;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="1025" y="140" width="270" height="75" />
+    </mxCell>
+    <mxCell id="A10_life_s" value="" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;dashed=1;dashPattern=5 5;strokeColor=#8b9bab;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="1160" y="215" />
+        <mxPoint as="targetPoint" x="1160" y="2185" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_g" value="UE / GAS执行器&lt;br&gt;条件监听与世界执行" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;rounded=0;fillColor=#eaf2fa;strokeColor=#6686a6;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="1515" y="140" width="270" height="75" />
+    </mxCell>
+    <mxCell id="A10_life_g" value="" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;dashed=1;dashPattern=5 5;strokeColor=#8b9bab;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="1650" y="215" />
+        <mxPoint as="targetPoint" x="1650" y="2185" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_12" value="1 文本协作输入" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="180" y="285" />
+        <mxPoint as="targetPoint" x="670" y="285" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_13" value="2 认证会话 + 存档归属 + 逻辑请求ID&lt;br&gt;当前游玩 / 遭遇 / 快照；事件入口另有eventId" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="670" y="380" />
+        <mxPoint as="targetPoint" x="1160" y="380" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_auth" value="3 验证玩家 / 存档作用域&lt;br&gt;查询持久幂等键及请求内容&lt;br&gt;首次：生成并保存原结果&lt;br&gt;重复：回放；同键异内容：冲突" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;shape=note;size=14;fillColor=#fff6dc;strokeColor=#c9ad64;align=left;verticalAlign=top;spacing=12;fontSize=16;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="930" y="420" width="460" height="135" />
+    </mxCell>
+    <mxCell id="A10_14" value="4 持久提交后返回原建议 / 已知结果&lt;br&gt;稳定命令身份 + 条件 / 目标 / 有效期" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=open;endFill=0;endSize=7;dashed=1;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="1160" y="625" />
+        <mxPoint as="targetPoint" x="670" y="625" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_transaction" value="生成与持久确认是目标步骤；当前JSON / 内存缓存不提供跨重启保证。UE接受与实际执行另行记录。" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="510" y="655" width="1270" height="56" />
+    </mxCell>
+    <mxCell id="A10_15" value="alt" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;shape=umlFrame;fillColor=none;strokeColor=#8597a8;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;fontSize=16;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="510" y="755" width="1270" height="885" />
+    </mxCell>
+    <mxCell id="A10_16" value="[旧局 / 过期 / 越权 / 非法目标或能力]" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="595" y="765" width="1160" height="32" />
+    </mxCell>
+    <mxCell id="A10_17" value="5a 拒绝 / 过期 / 取消及稳定原因；不执行、不报完成" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="670" y="870" />
+        <mxPoint as="targetPoint" x="1160" y="870" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_18" value="非施法可无技能；施法必须引用获准能力；具体数量仍按DEC-03待定。" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="535" y="900" width="1215" height="45" />
+    </mxCell>
+    <mxCell id="A10_div" value="" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;dashed=1;strokeColor=#8597a8;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="510" y="980" />
+        <mxPoint as="targetPoint" x="1780" y="980" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_20" value="[else：当前有效且首次接受的命令]" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="595" y="990" width="1160" height="32" />
+    </mxCell>
+    <mxCell id="A10_21" value="5b 接受并登记原命令（accepted ≠ 执行成功）" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="670" y="1075" />
+        <mxPoint as="targetPoint" x="1160" y="1075" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_22" value="6 立即尝试或登记受支持条件，UE本地监听" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="670" y="1155" />
+        <mxPoint as="targetPoint" x="1650" y="1155" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_condition" value="条件触发 / 即时执行时，再查当前遭遇、目标与TTL。&lt;br&gt;检查当前GAS及不可打断窗口；断网保留有效已登记条件。&lt;br&gt;新遭遇不恢复旧命令。" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;shape=note;size=14;fillColor=#fff6dc;strokeColor=#c9ad64;align=left;verticalAlign=top;spacing=12;fontSize=16;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="1210" y="1180" width="540" height="95" />
+    </mxCell>
+    <mxCell id="A10_23" value="7 [实际启动] started；[启动失败] rejected + reason" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=open;endFill=0;endSize=7;dashed=1;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="1650" y="1320" />
+        <mxPoint as="targetPoint" x="670" y="1320" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_24" value="8 仅上传实际启动 / 拒绝阶段" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="670" y="1395" />
+        <mxPoint as="targetPoint" x="1160" y="1395" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_25" value="9 [仅实际启动后] 命中 / 完成 / 失败的真实结果" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=open;endFill=0;endSize=7;dashed=1;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="1650" y="1480" />
+        <mxPoint as="targetPoint" x="670" y="1480" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_26" value="10 关联原命令及作用域的真实回执" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="670" y="1560" />
+        <mxPoint as="targetPoint" x="1160" y="1560" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_27" value="启动失败即终态，不再进入步骤9；并非每条指令有命中。回执持久合并后确认，生成/接受不计为完成。" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="535" y="1590" width="1215" height="40" />
+    </mxCell>
+    <mxCell id="A10_28" value="opt" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;shape=umlFrame;fillColor=none;strokeColor=#8597a8;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;fontSize=16;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="510" y="1690" width="1270" height="295" />
+    </mxCell>
+    <mxCell id="A10_29" value="[请求 / 回执重传；确认丢失；服务重启；重复或乱序]" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="595" y="1700" width="1160" height="32" />
+    </mxCell>
+    <mxCell id="A10_30" value="11 重传同一逻辑命令或稳定回执ID（保持原作用域）" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;endSize=7;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="670" y="1795" />
+        <mxPoint as="targetPoint" x="1160" y="1795" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_31" value="12 持久回放 / 合并原结果，确认后移除本地待传项" style="html=1;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#24364b;strokeColor=#4b6177;endArrow=none;rounded=0;labelBackgroundColor=#ffffff;endArrow=open;endFill=0;endSize=7;dashed=1;fontSize=16;verticalAlign=bottom;spacingBottom=6;" edge="1" parent="1">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="1160" y="1885" />
+        <mxPoint as="targetPoint" x="670" y="1885" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="A10_dedup" value="UE按原命令防重复启动；服务校验合法阶段与终态，重复/乱序不得倒退。&lt;br&gt;通知丢失可按游标补拉；旧事实可归档原局，不重放当前世界动作。" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="535" y="1910" width="1215" height="60" />
+    </mxCell>
+    <mxCell id="A10_32" value="scope含认证玩家 / 游戏 / 存档分支 / 角色；会话、游玩和遭遇分别保留生命周期。&lt;br&gt;NPC-UC04从步骤2心跳输入，纯规则仲裁；NPC-UC05从可信事件输入，先持久幂等再更新事实/关系。&lt;br&gt;取消/重试使旧回包失效，不清长期记忆或关系；记忆清理另受reset generation屏障约束。&lt;br&gt;模型为DEP / EVO目标，不承诺任意故障下永久exactly-once；外发及保留见DEC-05。" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;shape=note;size=14;fillColor=#fff6dc;strokeColor=#c9ad64;align=left;verticalAlign=top;spacing=12;fontSize=16;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="65" y="2040" width="1680" height="140" />
+    </mxCell>
+    <mxCell id="A10_33" value="当前协议为accepted/executed/rejected/expired/cancelled；started / hit / completed等目标阶段须版本化对齐。&lt;br&gt;本图未宣称接口、UE执行或上述持久化已经实现/验收。检查：NPC-EVO-04/06；DEP-UE-03/04。" style="fontFamily=Microsoft YaHei;fontSize=17;fontColor=#24364b;html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=0;spacing=0;" vertex="1" parent="1">
+      <mxGeometry as="geometry" x="70" y="2220" width="1680" height="75" />
+    </mxCell>
+  </root>
+</mxGraphModel></diagram></mxfile>

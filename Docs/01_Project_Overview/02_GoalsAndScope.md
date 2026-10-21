@@ -11,6 +11,7 @@
 - 一致的玩家数值、可用技能与经过实测调整的战斗手感。
 - AI 队友聊天、指令、实际战斗与执行回执，并整合为综合演示。
 - Boss本地推理及模型交付；远程NPC服务的玩家/存档隔离、缓存同步、外部ASR和模型版本发布，按[ADR-003](../02_Design_Doc/TDD/Decisions/03_ADR003SplitAIDeployment.md)及[部署说明](../02_Design_Doc/TDD/06_Deployment.md)开发验收。多个独立单机客户端共享服务，不引入多人联机战斗或在线学习。
+- EVO-20261021采纳[NPC交互与服务演进](../02_Design_Doc/TDD/07_NPCInteractionEvolution.md)：轮次/取消、实时语音、事件治理、来源记忆和云端持久一致性20项。沿用原FR/UC，VAD、TTS及回复打断列为用例内后置扩展，不认作原有语音输入已完成，也不调整M1/M2主线。
 
 当前先完成 BT 全流程，后续阶段、负责人和依赖见[开发路线](../05_Development_Guide/06_DevelopmentRoadmap.md)。
 

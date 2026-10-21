@@ -1,14 +1,14 @@
 # UML源与预览
 
-2026-10-21采纳的[远程NPC/本地Boss部署扩展](../02_Design_Doc/TDD/06_Deployment.md)另按DEP编号追踪。本图集继续覆盖原课程业务与本机联调分析；玩家/存档认证、外部ASR协作和缓存同步目标未由本次Markdown编辑回填到draw.io/PNG，不能据旧图声称远程方案已完整建模或运行验收。相关目标分析见两仓SDD/部署正文，历史图源和预览保持同源。
+2026-10-21按用户要求同步[部署扩展](../02_Design_Doc/TDD/06_Deployment.md)及[NPC交互演进](../02_Design_Doc/TDD/07_NPCInteractionEvolution.md)：A01/A04/A06/A10已通过MCP修改原文件，新增A11部署及A12a/b语音生命周期，均由draw.io Desktop从源逐页导出。新增身份、持久幂等、同步与语音表达需求目标，代码/协议/运行状态仍按两仓正文及检查记录，不把图形完成视为实现验收。
 
-本轮基线为[COURSE-20261018-R1](../09_Course_Analysis/README.md)。模型按10个主题保留10份本地`.drawio`源，其中RL用例、RL分析类和游戏状态机分为多页，共14页。页面通过draw.io MCP写入，再由draw.io Desktop逐页导出带XML的`.drawio.png`。主题数和页数按本项目表达需要选定，不是老师要求固定数量。
+原课程基线为[COURSE-20261018-R1](../09_Course_Analysis/README.md)，本次增加DEP/EVO-20261021目标视图。当前12份本地`.drawio`源共17页：原10份14页保留主题/页名，新增A11一页及A12两页。PNG嵌入可编辑XML，主题数和页数按表达需要选定，不是老师要求固定数量。
 
 先看A08a主流程及A08b恢复子状态机，再看A05及[重试对象分析](../09_Course_Analysis/01_RetryObjectAnalysis.md)理解职责；课程整合内容见[Word需求文档修订副本](../09_Course_Analysis/Word/AesirWarden需求分析文档.docx)。模型表达需求与分析，不表示同名类已实现。用户已退回上一版版式，当前按直线及斜直线为主重排；本次返修的检查、人工语义审查和最终接受状态见[过程证据](../09_Course_Analysis/03_AIModelingEvidence.md)。
 
 ## 当前分析模型
 
-本轮14页模型已回填[Docs内Word副本](../09_Course_Analysis/Word/AesirWarden需求分析文档.docx)，图标识使用A01～A10及分页后缀；外部原件保留。下表的阅读图号用于索引，具体Word图标识及章节以修订副本为准。UC、BR、对象约束和测试映射见[逐项追踪](../09_Course_Analysis/02_Traceability.md)。
+图标识使用A01～A12及分页后缀，Word中的阅读图面可由同一源图分段排列。回填[Docs内Word副本](../09_Course_Analysis/Word/AesirWarden需求分析文档.docx)的实际版本、分页与检查记录见[建模记录](../09_Course_Analysis/03_AIModelingEvidence.md)，外部原件保留。UC、BR、对象约束和测试映射见[逐项追踪](../09_Course_Analysis/02_Traceability.md)。
 
 | 模型 / 阅读图号 | 目的与覆盖 | 可编辑源及页 | Desktop预览 |
 | --- | --- | --- | --- |
@@ -26,8 +26,11 @@
 | A08b / 图8b 恢复子状态机 | 重试与菜单恢复、恢复失败禁战斗及再次尝试/退出 | 同一[A08源](src/08_GameFlowState.drawio)，第2页“恢复子状态机” | [图](png/08b_RecoveryState.drawio.png) |
 | A09 / 图9 Boss回退时序 | 合法动作/无动作、错误与超时、连续3次回退、终局与迟到响应 | [源](src/09_BossFallbackSequence.drawio) | [图](png/09_BossFallbackSequence.drawio.png) |
 | A10 / 图10 NPC执行时序 | UE校验、拒绝、执行与实际阶段回执、重复/过期/旧局隔离 | [源](src/10_NPCExecutionSequence.drawio) | [图](png/10_NPCExecutionSequence.drawio.png) |
+| A11 / 图11 AI部署 | 玩家本机、远程NPC及外部后端；UE世界权威、服务持久状态、同一认证入口与后置TTS | [源](src/11_AIDeployment.drawio)，部署与权威边界页 | [图](png/11_AIDeployment.drawio.png) |
+| A12a / 图12a NPC输入与生成 | NPC-UC01/03细化：身份/排队、最终转写、上下文、delta/meta与完整提交边界 | [源](src/12_NPCVoiceLifecycle.drawio)，第1页“输入与生成” | [图](png/12a_NPCInputGeneration.drawio.png) |
+| A12b / 图12b NPC播放与打断 | 已采纳后置回复：确认文本、并发合成/有序播放、取消及迟到片段丢弃 | 同一[A12源](src/12_NPCVoiceLifecycle.drawio)，第2页“播放与打断” | [图](png/12b_NPCPlaybackInterruption.drawio.png) |
 
-共同状态：10份源的14页已通过draw.io MCP保存并由Desktop逐页导出，做过同源、编号、链接与AI目视检查。关键问题、真实反馈和检查范围已合并到[建模与修订记录](../09_Course_Analysis/03_AIModelingEvidence.md)；这些检查不代表用户或同伴已接受全部模型。
+共同状态：原基线已做同源导出；本次变动的6份源7页再次通过MCP保存，并由Desktop 32.4.1导出和目视检查。Python侧另有4份源5页的对应更新。当前索引共12源17页，源/预览同源检查与Word分页检查分别记录；这些检查不代表用户或同伴已接受全部模型。
 
 用例、类及状态图以直线和斜直线为主，时序消息保持水平。A03/A07/A08通过分页减少交叉，不改变需求覆盖和关系语义。多页文件需在Desktop中逐页导出，不能用旧单页PNG代替；每页预览的文件名见上表。
 
@@ -42,6 +45,32 @@
 
 NPC模型依据课程报告和已登记服务版本建立课程视图，不无说明覆盖Python仓库的权威模型。输入版本与未决项见[需求来源](../09_Course_Analysis/README.md#需求来源)。
 
+## EVO-20261021模型同步计划
+
+2026-10-21用户采纳的20项与既有NPC-UC01～07步骤/异常流的对应已写入演进页，随后明确要求修改Word、经MCP更新图源并Desktop导出。以下图形已按目标职责同步；表述的机制仍待代码/协议实施和运行验收。D/V/G/M/C为学习项，不新增20个业务用例，原23FR/18UC及NPC9FR/7UC计数保留。
+
+| 模型 / 实际页 | 同步级别与最小修改 | 对应学习项 / 用例 |
+| --- | --- | --- |
+| [A06](src/06_NPCAnalysisClasses.drawio)，分析模型 | 已同步目标：认证玩家/存档分支的可变状态归属、共享只读人格与私有记忆/关系、来源/确认/重置世代、交互请求/逻辑命令/回执关联。分析对象不强制映射同名实现类 | D1/D3、G4、M2～M4、C1/C2；NPC-UC01/02/05/06/07 |
+| [A10](src/10_NPCExecutionSequence.drawio)，分析时序 | 已同步目标：认证、原结果回放、持久确认与乱序合并；条件登记→本地监听→触发复核GAS/目标/遭遇/TTL；接受≠执行≠命中≠完成 | D2、G1～G4、C1～C3；NPC-UC02/04/05，关联旧局隔离 |
+| [A04](src/04_NPCUseCases.drawio)，分析模型 | 已小幅同步：远程/认证前置、最终转写、后置TTS/VAD/打断，仍保留7UC | V1～V4、C1；NPC-UC01/03 |
+| [A01](src/01_ProjectUseCases.drawio)，分析模型 | 已小幅同步正式远程NPC/本地Boss边界及EVO范围，仍保留18主要UC | G1、C1；整组范围，不改变Boss研究语义 |
+| Python UML-11，服务用例 | 已在Python源表达外部ASR协作与后置TTS，保留UC-01～07 | V1～V4、C1；UE NPC-UC01/03对应服务UC-01/03 |
+| Python UML-12a/b，领域对象/对象实例 | 已在Python源表达认证作用域、共享人格/私有状态、来源/版本/重置、稳定命令/回执及跨玩家对象例 | D1/D3、G4、M1～M4、C1～C3 |
+| Python UML-14，记忆重置协作 | 已在Python源表达归属、屏障、旧写入拒绝；仍区分现行部分失败，不冒充已实现原子事务 | M3/M4、C1/C3；NPC-UC07/服务UC-07 |
+| Python UML-15，指令与回执协作 | 已在Python源表达持久去重/回放、确认、条件触发和乱序合并；现有枚举与目标阶段分开 | G3/G4、C1/C2；NPC-UC02/04/05 |
+
+Python图源仍在该仓`docs/design/uml/src`维护，页名/预览与修改要求见其UML索引；本仓不复制或另存一套源。
+
+本次新增以下目标视图，图源和预览已列入上表，不增加业务UC：
+
+1. A11部署图：玩家本机UE/GAS/BT、Boss推理进程、本地采集/播放/后置VAD，远程NPC认证/API/持久存储与同步，以及外部LLM/ASR/后置TTS。标明回环HTTP、远程HTTPS/SSE、权威位置、同一认证入口和凭据边界，不用Technical历史组件图冒充正式部署图。
+2. A12a/b对话/语音生命周期时序：既有UC01/03的细化，表达排队、临时/最终转写、delta/meta、确认文本合成/有序播放、按回复打断及重试/读档后的迟到结果丢弃；生成、播放和动作结果分开。额外状态图未创建，避免机械增加图数。
+
+A02/A05/A08游戏业务主体保持，已有重试/旧身份失效规则只需关联新交互时序；若实际恢复职责变化再局部修订。A03/A07/A09的Boss训练、冻结策略、共享执行与回退语义不因本次NPC演进改变，原DEP本地交付的待同步仍保留。Technical中的GAS及Boss共享执行图继续作为历史参考。
+
+本次已按“后续维护”保存图源并逐页Desktop导出。Desktop 32.4.1的CLI页号从1开始，MCP页索引仍从0开始，不能沿用旧CLI页号导致错页。原14页/18个Word图面是2026-10-19基线历史计数，本次源图为17页，Word回填/分页按实际检查记录。
+
 ## 旧图处置
 
 | 旧UE PNG | 本轮去向 |
@@ -51,7 +80,7 @@ NPC模型依据课程报告和已登记服务版本建立课程视图，不无�
 | 07 RL用例、08 RL概念模型 | 由A03/A07替代；旧版备份已清理 |
 | 04组件、05 GAS、06共享执行时序 | 移至[Technical技术参考](Technical/README.md)，正文已更新引用 |
 
-旧PNG没有可核验的原提示与本地可编辑源，本轮不把它们补记为历史A1或人工审查成果。外部原Word及其9张旧内嵌图保留；Docs内修订副本已按当前语义采用14页模型，使用A01～A10及分页后缀登记图标识。
+旧PNG没有可核验的原提示与本地可编辑源，本轮不把它们补记为历史A1或人工审查成果。外部原Word及其9张旧内嵌图保留；Docs内副本沿用A01～A10并新增A11/A12及分页后缀，图形和运行证据分开。
 
 ## 后续维护
 
@@ -60,4 +89,4 @@ NPC模型依据课程报告和已登记服务版本建立课程视图，不无�
 3. 用draw.io Desktop从该源导出PNG并嵌入XML，保留源；不要只手改预览。
 4. 检查关系双向读法、守卫、端点、文字和遮挡；原稿、实际审查与修订证据按真实阶段留存。
 
-Word副本已回填并做过实际分页检查，过程见[建模与修订记录](../09_Course_Analysis/03_AIModelingEvidence.md)。A05/A06及两张时序图按同源图片裁切为有重叠的上下阅读图面，共18个图面；14页模型源及Desktop导出图没有因此增加或重画。成员语义接受与游戏/服务/实验运行验收仍待完成。
+Word版本1.2共80页、22个阅读图面，按阅读需要由同源图片分段；逐页检查与实际修订见[建模与修订记录](../09_Course_Analysis/03_AIModelingEvidence.md)。分段不增加模型页，源仍为12份17页；成员语义接受与游戏/服务/实验运行验收仍待完成。
