@@ -4,6 +4,16 @@
 
 来源与确认状态见[课程基线](README.md)，完整需求与修订后的详细用例见[Word修订稿](Word/AesirWarden需求分析文档.docx)。本页保存映射与验收意图，不复制完整需求书、任务状态或测试操作脚本。具体操作和实际结果归[开发检查清单](../06_Test_Doc/01_VerificationMatrix.md)，正式实验条件归[评估方案](../08_RL_Research/03_EvaluationProtocol.md)。
 
+2026-10-21部署扩展单列`DEP-20261021`，不重编号以下23FR/18UC。正式位置与离线规则见[部署说明](../02_Design_Doc/TDD/06_Deployment.md)，目标来源见[ADR-003](../02_Design_Doc/TDD/Decisions/03_ADR003SplitAIDeployment.md)；原Word/UML未因Markdown修改自动回填。
+
+| 扩展范围 | 既有职责关联 | 验收入口 |
+| --- | --- | --- |
+| 本地Boss与模型随包/更新 | RL-FR01/02/04/06、R-UC-01/02；共享GAS与冻结模型 | DEP-UE-01/05；AI-DEP-01/02/14/15；Python方案第五/六步 |
+| 远程NPC、玩家/存档身份与ASR | NPC-FR01～09、NPC-UC01～07；UE实时执行边界保持 | DEP-UE-02/03/04；AI-DEP-03～13；Python方案第二/三/四步 |
+| 缓存同步、重连、记忆重置与运维 | 游戏重试/旧响应隔离、NPC记忆/关系及回执 | DEP-UE-04/06；AI-DEP-09/10/15；Python方案第四/六步 |
+
+以上均未执行。AI-DEP编号来自[部署正文](../02_Design_Doc/TDD/06_Deployment.md)的两仓能力对照；服务侧方案位置也在该页列明，不再引用服务器仓库中没有来源的AT-DEP编号。新增身份、外部ASR协作和同步字段仍须落实到后端需求/契约，旧图形覆盖边界见UML索引。
+
 ## 读表规则
 
 - `UC/步骤`指[Word修订稿](Word/AesirWarden需求分析文档.docx)第6章分步表，不再按外部原件或旧提取的步骤数读取。G-UC-05统一为3步；R-UC-02细化为部署1、请求2、完整响应校验3、共享执行4、持续/BT段5、终局失效6。G-UC-06同时对应[本轮详规](01_RetryObjectAnalysis.md#g-uc-06)，其成功出口在恢复可操作状态结束，后续探索和入场分别回到G-UC-02/03。

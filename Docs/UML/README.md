@@ -1,5 +1,7 @@
 # UML源与预览
 
+2026-10-21采纳的[远程NPC/本地Boss部署扩展](../02_Design_Doc/TDD/06_Deployment.md)另按DEP编号追踪。本图集继续覆盖原课程业务与本机联调分析；玩家/存档认证、外部ASR协作和缓存同步目标未由本次Markdown编辑回填到draw.io/PNG，不能据旧图声称远程方案已完整建模或运行验收。相关目标分析见两仓SDD/部署正文，历史图源和预览保持同源。
+
 本轮基线为[COURSE-20261018-R1](../09_Course_Analysis/README.md)。模型按10个主题保留10份本地`.drawio`源，其中RL用例、RL分析类和游戏状态机分为多页，共14页。页面通过draw.io MCP写入，再由draw.io Desktop逐页导出带XML的`.drawio.png`。主题数和页数按本项目表达需要选定，不是老师要求固定数量。
 
 先看A08a主流程及A08b恢复子状态机，再看A05及[重试对象分析](../09_Course_Analysis/01_RetryObjectAnalysis.md)理解职责；课程整合内容见[Word需求文档修订副本](../09_Course_Analysis/Word/AesirWarden需求分析文档.docx)。模型表达需求与分析，不表示同名类已实现。用户已退回上一版版式，当前按直线及斜直线为主重排；本次返修的检查、人工语义审查和最终接受状态见[过程证据](../09_Course_Analysis/03_AIModelingEvidence.md)。
@@ -59,4 +61,3 @@ NPC模型依据课程报告和已登记服务版本建立课程视图，不无�
 4. 检查关系双向读法、守卫、端点、文字和遮挡；原稿、实际审查与修订证据按真实阶段留存。
 
 Word副本已回填并做过实际分页检查，过程见[建模与修订记录](../09_Course_Analysis/03_AIModelingEvidence.md)。A05/A06及两张时序图按同源图片裁切为有重叠的上下阅读图面，共18个图面；14页模型源及Desktop导出图没有因此增加或重画。成员语义接受与游戏/服务/实验运行验收仍待完成。
-

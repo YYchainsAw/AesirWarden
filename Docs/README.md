@@ -8,6 +8,7 @@
 | 查游戏流程和玩法规则 | [第一关流程](02_Design_Doc/GDD/01_GameFlow.md) · [战斗](02_Design_Doc/GDD/03_CombatDesign.md) · [Boss](02_Design_Doc/GDD/04_EnemyDesign.md) · [技能与成长草案](02_Design_Doc/GDD/05_MagicSystem.md) |
 | 给蓝图和场景接线 | [流程控制器接入](05_Development_Guide/05_LevelFlowGuide.md) · [技术架构](02_Design_Doc/TDD/01_Architecture.md) · [GAS](02_Design_Doc/TDD/02_GasArchitecture.md) |
 | 启动、编译、改配置或恢复工程 | [工程速查](05_Development_Guide/01_ProjectQuickReference.md) |
+| 逐项对照15项AI能力的位置、已有计划、同步与断网边界 | [AI部署与离线行为](02_Design_Doc/TDD/06_Deployment.md) · [ADR-003](02_Design_Doc/TDD/Decisions/03_ADR003SplitAIDeployment.md) |
 | 查 Bug 或检查改动有没有影响旧功能 | [已知问题](06_Test_Doc/02_KnownIssues.md) · [日常检查表](06_Test_Doc/01_VerificationMatrix.md) · [打包检查](07_Release/01_ReleaseChecklist.md) |
 | 接入 RL Boss 或做对照实验 | [Boss RL 入口](08_RL_Research/README.md) |
 | 查看课程 Word、说明对象职责或检查需求与 UML | [Word需求文档修订稿](09_Course_Analysis/Word/AesirWarden需求分析文档.docx) · [课程分析与基线](09_Course_Analysis/README.md) · [重试对象分析](09_Course_Analysis/01_RetryObjectAnalysis.md) · [需求追踪](09_Course_Analysis/02_Traceability.md) |
@@ -20,7 +21,7 @@
 - [素材与贡献来源](01_Project_Overview/05_CreditsAndProvenance.md)：素材归属和展示署名。
 - [本轮建模证据](09_Course_Analysis/03_AIModelingEvidence.md)：真实输入、AI预审与修订，人工审查和运行验收分别登记。
 
-Word位于Docs内的修订副本已按本轮基线回填，外部原件保留；[建模与修订记录中的排版核对](09_Course_Analysis/03_AIModelingEvidence.md)已完成。成员最终语义接受及UE/服务/实验运行验收仍需分别记录。
+Word位于Docs内的修订副本已按COURSE-20261018-R1回填，外部原件保留；[建模与修订记录中的排版核对](09_Course_Analysis/03_AIModelingEvidence.md)已完成。2026-10-21部署扩展单列于Markdown/追踪，尚未回填Word或重导UML。成员最终语义接受及UE/服务/实验运行验收仍需分别记录。
 
 ## 怎么维护
 
