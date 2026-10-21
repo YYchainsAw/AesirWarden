@@ -31,6 +31,80 @@
 namespace AesirSettingsTests
 {
 
+// Known config globals are cache keys in UE 5.8, not filesystem paths.
+// Preserve the saved/runtime layers too: restoring only InMemoryFile can leave
+// test writes queued for a later config flush during engine shutdown.
+struct FSettingsConfigSnapshot
+{
+	FString Key;
+	FString Filename;
+	TArray<uint8> Bytes;
+	TOptional<FConfigFile> Memory;
+	TOptional<FConfigFile> Combined;
+	TOptional<FConfigCommandStream> Saved;
+	TOptional<FConfigCommandStream> Runtime;
+	bool bExisted = false;
+	bool bCaptured = false;
+
+	bool Capture(const FString& InKey)
+	{
+		Key = InKey;
+		FConfigBranch* Branch = GConfig ? GConfig->FindBranch(NAME_None, Key) : nullptr;
+		if (!Branch || Branch->IniPath.IsEmpty())
+		{
+			UE_LOG(LogTemp, Error, TEXT("Settings test cannot resolve config branch %s; refusing to modify settings."), *Key);
+			return false;
+		}
+		Filename = FPaths::ConvertRelativePathToFull(Branch->IniPath);
+		Memory.Emplace(Branch->InMemoryFile);
+		Combined.Emplace(Branch->FinalCombinedLayers);
+		Saved.Emplace(Branch->SavedLayer);
+		Runtime.Emplace(Branch->RuntimeChanges);
+		bExisted = IFileManager::Get().FileExists(*Filename);
+		if (bExisted && !FFileHelper::LoadFileToArray(Bytes, *Filename))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Settings test cannot back up %s; refusing to modify settings."), *Filename);
+			return false;
+		}
+		if (bExisted)
+		{
+			const FString Directory = FPaths::ProjectSavedDir() / TEXT("Settings/BeforeAutomation");
+			IFileManager::Get().MakeDirectory(*Directory, true);
+			const FString Backup = Directory / FString::Printf(TEXT("%s_%s.ini"), *FPaths::GetBaseFilename(Filename), *FGuid::NewGuid().ToString(EGuidFormats::Digits));
+			if (!FFileHelper::SaveArrayToFile(Bytes, *Backup))
+			{
+				UE_LOG(LogTemp, Error, TEXT("Settings test cannot write backup %s; refusing to modify settings."), *Backup);
+				return false;
+			}
+		}
+		UE_LOG(LogTemp, Display, TEXT("SETTINGS_CONFIG_BACKUP: key=%s; path=%s; existed=%d; bytes=%d"), *Key, *Filename, bExisted, Bytes.Num());
+		bCaptured = true;
+		return true;
+	}
+
+	void Restore()
+	{
+		if (!bCaptured) return;
+		FConfigBranch* Branch = GConfig ? GConfig->FindBranch(NAME_None, Key) : nullptr;
+		if (Branch)
+		{
+			Branch->InMemoryFile = Memory.GetValue();
+			Branch->InMemoryFile.Branch = Branch;
+			Branch->FinalCombinedLayers = Combined.GetValue();
+			Branch->FinalCombinedLayers.Branch = Branch;
+			Branch->SavedLayer = Saved.GetValue();
+			Branch->SavedLayer.Branch = Branch;
+			Branch->RuntimeChanges = Runtime.GetValue();
+			Branch->RuntimeChanges.Branch = Runtime.GetValue().Branch ? Branch : nullptr;
+		}
+		else UE_LOG(LogTemp, Error, TEXT("Settings test lost config branch %s while restoring."), *Key);
+		const bool bRestored = bExisted ? FFileHelper::SaveArrayToFile(Bytes, *Filename)
+			: (!IFileManager::Get().FileExists(*Filename) || IFileManager::Get().Delete(*Filename, false, true));
+		if (!bRestored) UE_LOG(LogTemp, Error, TEXT("Settings test could not restore %s; use Saved/Settings/BeforeAutomation backup."), *Filename);
+		UE_LOG(LogTemp, Display, TEXT("SETTINGS_CONFIG_RESTORED: key=%s; path=%s; success=%d"), *Key, *Filename, bRestored);
+	}
+};
+
 // Apply/Save is a behavior under test. Capture every config property, scalability
 // cache, config-cache section and on-disk byte before touching global settings.
 // The fixture restores all four so a test cannot persist a user's temporary
@@ -45,15 +119,8 @@ public:
 		{
 			return;
 		}
-		SettingsFilename = GGameUserSettingsIni;
-		bHadSettingsFile = FFileHelper::LoadFileToArray(OriginalFile, *SettingsFilename);
-		if (GConfig)
-		{
-			if (const FConfigFile* Config = GConfig->FindConfigFile(SettingsFilename))
-			{
-				OriginalConfig.Emplace(*Config);
-			}
-		}
+		if (!GameConfig.Capture(GGameUserSettingsIni) || !EditorConfig.Capture(GEditorSettingsIni)) return;
+		bReadyForChanges = true;
 		for (TFieldIterator<FProperty> It(Settings->GetClass()); It; ++It)
 		{
 			if (It->HasAnyPropertyFlags(CPF_Config))
@@ -64,14 +131,6 @@ public:
 			}
 		}
 		OriginalQuality = Settings->ScalabilityQuality;
-		const FString BackupDirectory = FPaths::ProjectSavedDir() / TEXT("Settings/BeforeAutomation");
-		IFileManager::Get().MakeDirectory(*BackupDirectory, true);
-		if (bHadSettingsFile)
-		{
-			const FString BackupPath = BackupDirectory / FString::Printf(TEXT("GameUserSettings_%s.ini"), *FGuid::NewGuid().ToString(EGuidFormats::Digits));
-			FFileHelper::SaveArrayToFile(OriginalFile, *BackupPath);
-		}
-
 		GameInstance = NewObject<UGameInstance>(GEngine);
 		GameInstance->AddToRoot();
 		GameInstance->InitializeStandalone(MakeUniqueObjectName(GetTransientPackage(), UWorld::StaticClass(), TEXT("AesirSettingsTest")));
@@ -102,7 +161,7 @@ public:
 			Menu->DiscardChangesAndClose();
 			Menu->RemoveFromParent();
 		}
-		if (Settings)
+		if (Settings && bReadyForChanges)
 		{
 			RestoreProperties();
 			Settings->ScalabilityQuality = OriginalQuality;
@@ -110,31 +169,6 @@ public:
 			Settings->ApplyRuntimeSettings(World);
 			RestoreProperties();
 			Settings->ScalabilityQuality = OriginalQuality;
-			if (bHadSettingsFile)
-			{
-				FFileHelper::SaveArrayToFile(OriginalFile, *SettingsFilename);
-			}
-			else
-			{
-				IFileManager::Get().Delete(*SettingsFilename, false, true);
-			}
-			if (GConfig)
-			{
-				if (OriginalConfig.IsSet())
-				{
-					FConfigFile* Cache = GConfig->FindConfigFile(SettingsFilename);
-					if (!Cache)
-					{
-						GConfig->LoadFile(SettingsFilename, &OriginalConfig.GetValue());
-						Cache = GConfig->FindConfigFile(SettingsFilename);
-					}
-					if (Cache) *Cache = OriginalConfig.GetValue();
-				}
-				else
-				{
-					GConfig->UnloadFile(SettingsFilename);
-				}
-			}
 		}
 		if (World)
 		{
@@ -147,6 +181,8 @@ public:
 			GEngine->DestroyWorldContext(World);
 			GameInstance->RemoveFromRoot();
 		}
+		GameConfig.Restore();
+		EditorConfig.Restore();
 	}
 
 	bool CreateMenu(FAutomationTestBase* Test)
@@ -175,14 +211,13 @@ public:
 	UGameViewportClient* Viewport = nullptr;
 	APlayerController* Controller = nullptr;
 	UAesirSettingsMenuWidget* Menu = nullptr;
-	FString SettingsFilename;
-	TArray<uint8> OriginalFile;
-	TOptional<FConfigFile> OriginalConfig;
+	FSettingsConfigSnapshot GameConfig;
+	FSettingsConfigSnapshot EditorConfig;
 	TMap<FProperty*, FString> OriginalProperties;
 	Scalability::FQualityLevels OriginalQuality;
 	TSharedPtr<SViewport> SlateViewport;
 	TSharedPtr<FSceneViewport> SceneViewport;
-	bool bHadSettingsFile = false;
+	bool bReadyForChanges = false;
 };
 
 class FExerciseSettings final : public IAutomationLatentCommand

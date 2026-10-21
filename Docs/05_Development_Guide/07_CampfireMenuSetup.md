@@ -232,7 +232,7 @@ UnrealEditor-Cmd.exe AesirWarden.uproject /Engine/Maps/Entry -EnablePlugins=Pyth
 | 设置、制作人员、返回与开始就绪状态 | `Aesir.Menu` 共 9 项通过，0 失败、0 警告；`WidgetActions` 覆盖原生菜单与保存的 WBP 两种类，验证子页、返回和开始就绪状态；报告 `Saved/StartMenu/GoldenLayout/Automation/index.json`。 |
 | Main 实机布局、透明效果与起身交接 | 1920×1080 Standalone 通过 `START_MENU_PRESENTATION_PASS` 与 `START_MENU_MAIN_SMOKE_PASS`；实际 Logo 中心 `(0.6180, 0.3820)`，四按钮共轴、55 号且均在屏幕内。目视确认字体、Logo 比例及边框中心透出地图；菜单等待 10 秒内玩家 150 HP 不变、Boss 保持等待，起身后恢复输入和 HUD；日志 `Saved/Logs/GoldenMenuMainSmoke1920.log`，截图 `Saved/StartMenu/GoldenLayout/Preview/`。 |
 
-本次截图通过进程参数 `-ForceRes -ResX=1920 -ResY=1080 -RenderOffscreen` 指定分辨率；截图进程临时执行 `DisableAllScreenMessages` 隐藏开发提示，未修改地图或项目渲染配置。设置仍为可扩展的占位子页，尚未接入实际画质、音量和键位；本轮也未进行 cooked Windows 包验收。
+本次截图通过进程参数 `-ForceRes -ResX=1920 -ResY=1080 -RenderOffscreen` 指定分辨率；截图进程临时执行 `DisableAllScreenMessages` 隐藏开发提示，未修改地图或项目渲染配置。该轮设置仍为占位子页；后续已接入独立的显示、画质、总音量与鼠标设置，当前操作见[设置菜单](10_SettingsMenuSetup.md)。键位重绑定尚未接入；本轮也未进行 cooked Windows 包验收。
 
 ### 同步起身与安全绕行镜头增量
 
