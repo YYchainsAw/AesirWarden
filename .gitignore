@@ -51,6 +51,12 @@ __pycache__/
 /Content/__ExternalObjects__/
 /Content/Aesir/Maps/
 
+# Emberhold permits use in games but forbids redistribution as standalone assets.
+# Restore these locally with Scripts/Editor/setup_combat_hud.py and the free download.
+/SourceArt/UI/Emberhold/*.zip
+/SourceArt/UI/Emberhold/emberhold-free-v1.0/
+/Content/Aesir/UI/Art/Emberhold/
+
 # Animation assets default to excluded, including future moved/imported clips.
 # Reopen only AnimBP, Blend Space, Notify Blueprints and Montage folders.
 /Content/Aesir/Animations/**
