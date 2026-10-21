@@ -35,6 +35,7 @@
 #include "Misc/ScopeExit.h"
 #include "Slate/SceneViewport.h"
 #include "UI/AesirMainMenuWidget.h"
+#include "UI/AesirSettingsMenuWidget.h"
 #include "UObject/UnrealType.h"
 #include "Widgets/SViewport.h"
 
@@ -791,15 +792,22 @@ bool FAesirMenuWidgetActionsTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("An empty status frees the status area"), Status->GetVisibility(), ESlateVisibility::Collapsed);
 		Settings->OnClicked.Broadcast();
 		TestNull(TEXT("Settings automatically broadcasts its action"), SettingsObserver->GetParent());
-		TestEqual(TEXT("Settings hides the main actions"), Actions->GetVisibility(), ESlateVisibility::Collapsed);
-		TestTrue(TEXT("Settings displays the details page"), Details->IsVisible());
-		TestTrue(TEXT("Settings displays its own title"), DetailsTitle->GetText().EqualTo(FText::FromString(TEXT("设置"))));
-		TestFalse(TEXT("Settings has explanatory content"), DetailsBody->GetText().IsEmpty());
+		TestEqual(TEXT("Settings hides the entire main menu and logo"), Menu->GetVisibility(), ESlateVisibility::Hidden);
+		TestEqual(TEXT("The separate Settings page leaves the old details page closed"), Details->GetVisibility(), ESlateVisibility::Collapsed);
+		UAesirSettingsMenuWidget* ActiveSettings = Menu->GetActiveSettingsMenu();
+		if (TestNotNull(TEXT("Settings opens its independent settings widget"), ActiveSettings))
+		{
+			TestTrue(TEXT("The independent Settings page is in the viewport"), ActiveSettings->IsInViewport());
+			TestTrue(TEXT("The independent Settings page is visible"), ActiveSettings->IsVisible());
+		}
 		Start->OnClicked.Broadcast();
-		TestNotNull(TEXT("A hidden Start cannot bypass the details page"), StartObserver->GetParent());
-		Back->OnClicked.Broadcast();
-		TestEqual(TEXT("Back closes the settings page"), Details->GetVisibility(), ESlateVisibility::Collapsed);
-		TestTrue(TEXT("Back restores the main actions"), Actions->IsVisible());
+		TestNotNull(TEXT("A hidden Start cannot bypass the independent Settings page"), StartObserver->GetParent());
+		if (ActiveSettings) ActiveSettings->RequestClose();
+		TestNull(TEXT("Closing Settings clears the active settings widget reference"), Menu->GetActiveSettingsMenu());
+		if (ActiveSettings) TestFalse(TEXT("Closing Settings removes its viewport entry"), ActiveSettings->IsInViewport());
+		TestTrue(TEXT("Closing Settings restores the entire main menu"), Menu->IsVisible());
+		TestEqual(TEXT("Closing Settings leaves the details page closed"), Details->GetVisibility(), ESlateVisibility::Collapsed);
+		TestTrue(TEXT("Closing Settings restores the main actions"), Actions->IsVisible());
 		TestTrue(TEXT("Returning from settings preserves readiness"), Start->GetIsEnabled());
 		Credits->OnClicked.Broadcast();
 		TestNull(TEXT("Credits automatically broadcasts its action"), CreditsObserver->GetParent());

@@ -10,6 +10,7 @@ class UButton;
 class UTextBlock;
 class UWidget;
 class UWidgetTree;
+class UAesirSettingsMenuWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FAesirMainMenuActionRequested);
 
@@ -31,6 +32,9 @@ public:
 	/** Restore the four main actions after a settings or credits page. */
 	UFUNCTION(BlueprintCallable, Category = "Aesir|Main Menu")
 	void ReturnToMainMenu();
+
+	UFUNCTION(BlueprintPure, Category = "Aesir|Main Menu")
+	UAesirSettingsMenuWidget* GetActiveSettingsMenu() const { return ActiveSettingsMenu; }
 
 	UPROPERTY(BlueprintAssignable, Category = "Aesir|Main Menu")
 	FAesirMainMenuActionRequested OnStartRequested;
@@ -97,10 +101,21 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aesir|Main Menu")
 	FText StatusText = NSLOCTEXT("AesirMainMenu", "PreparingCampfire", "正在准备营火……");
 
+	/** Soft asset reference also keeps the editable settings page discoverable when cooking. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aesir|Main Menu")
+	TSoftClassPtr<UAesirSettingsMenuWidget> SettingsMenuClass = TSoftClassPtr<UAesirSettingsMenuWidget>(
+		FSoftObjectPath(TEXT("/Game/Aesir/UI/Menus/WBP_SettingsMenu.WBP_SettingsMenu_C")));
+
 private:
 	void RefreshAvailability();
 	void ShowDetails(FText Title, FText Body);
 	bool bShowingDetails = false;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAesirSettingsMenuWidget> ActiveSettingsMenu;
+
+	UFUNCTION()
+	void HandleSettingsClosed();
 
 	UFUNCTION()
 	void HandleStartClicked();

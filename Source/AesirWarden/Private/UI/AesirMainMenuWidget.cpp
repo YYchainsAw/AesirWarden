@@ -1,6 +1,7 @@
 // Copyright (c) 2026 YYchainsAw. All rights reserved. Third-party assets belong to their respective owners.
 
 #include "UI/AesirMainMenuWidget.h"
+#include "UI/AesirSettingsMenuWidget.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
@@ -243,6 +244,12 @@ void UAesirMainMenuWidget::NativeConstruct()
 
 void UAesirMainMenuWidget::NativeDestruct()
 {
+	if (ActiveSettingsMenu)
+	{
+		ActiveSettingsMenu->OnClosed.RemoveDynamic(this, &ThisClass::HandleSettingsClosed);
+		ActiveSettingsMenu->RemoveFromParent();
+		ActiveSettingsMenu = nullptr;
+	}
 	if (Btn_Start)
 	{
 		Btn_Start->OnClicked.RemoveDynamic(this, &UAesirMainMenuWidget::HandleStartClicked);
@@ -298,6 +305,7 @@ void UAesirMainMenuWidget::RefreshAvailability()
 
 void UAesirMainMenuWidget::FocusDefaultAction()
 {
+	if (ActiveSettingsMenu || !IsVisible()) return;
 	UButton* Target = bShowingDetails ? Btn_Back.Get()
 		: (Btn_Start && Btn_Start->GetIsEnabled() && Btn_Start->IsVisible() ? Btn_Start.Get() : Btn_Quit.Get());
 	if (!Target || !Target->GetIsEnabled() || !Target->IsVisible())
@@ -316,6 +324,11 @@ void UAesirMainMenuWidget::FocusDefaultAction()
 
 void UAesirMainMenuWidget::ReturnToMainMenu()
 {
+	if (ActiveSettingsMenu)
+	{
+		ActiveSettingsMenu->RequestClose();
+		return;
+	}
 	bShowingDetails = false;
 	if (MenuDetails)
 	{
@@ -353,7 +366,7 @@ void UAesirMainMenuWidget::ShowDetails(FText Title, FText Body)
 
 void UAesirMainMenuWidget::HandleStartClicked()
 {
-	if (bStartEnabled && !bShowingDetails)
+	if (bStartEnabled && !bShowingDetails && !ActiveSettingsMenu)
 	{
 		OnStartRequested.Broadcast();
 	}
@@ -366,10 +379,27 @@ void UAesirMainMenuWidget::HandleQuitClicked()
 
 void UAesirMainMenuWidget::HandleSettingsClicked()
 {
-	ShowDetails(LOCTEXT("SettingsTitle", "设置"),
-		LOCTEXT("SettingsComingSoon", "画面 / 声音 / 操作\n更多设置将在后续开放"));
+	if (ActiveSettingsMenu || !GetOwningPlayer()) return;
+	UClass* WidgetClass = SettingsMenuClass.LoadSynchronous();
+	if (!WidgetClass) WidgetClass = LoadClass<UAesirSettingsMenuWidget>(nullptr,
+		TEXT("/Game/Aesir/UI/Menus/WBP_SettingsMenu.WBP_SettingsMenu_C"), nullptr, LOAD_NoWarn);
+	if (!WidgetClass) WidgetClass = UAesirSettingsMenuWidget::StaticClass();
+	ActiveSettingsMenu = CreateWidget<UAesirSettingsMenuWidget>(GetOwningPlayer(), WidgetClass);
+	if (!ActiveSettingsMenu) return;
+	ActiveSettingsMenu->OnClosed.AddUniqueDynamic(this, &ThisClass::HandleSettingsClosed);
+	SetVisibility(ESlateVisibility::Hidden);
+	ActiveSettingsMenu->AddToViewport(110);
 	OnSettingsRequested.Broadcast();
 	ReceiveSettingsOpened();
+}
+
+void UAesirMainMenuWidget::HandleSettingsClosed()
+{
+	if (ActiveSettingsMenu) ActiveSettingsMenu->OnClosed.RemoveDynamic(this, &ThisClass::HandleSettingsClosed);
+	ActiveSettingsMenu = nullptr;
+	SetVisibility(ESlateVisibility::Visible);
+	ReturnToMainMenu();
+	if (Btn_Settings && GetOwningPlayer()) Btn_Settings->SetUserFocus(GetOwningPlayer());
 }
 
 void UAesirMainMenuWidget::HandleCreditsClicked()
