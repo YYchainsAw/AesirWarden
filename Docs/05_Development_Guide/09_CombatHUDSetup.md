@@ -63,13 +63,17 @@ setup_combat_hud.setup_combat_hud(rebuild_layout=True)
 
 | 选择的容器 | 默认位置与尺寸 | 推荐调整方式 |
 | --- | --- | --- |
-| `PlayerVitals` | 左上锚点，位置 `(72,64)`，尺寸 `436×116`。 | 整体移动生命与防御区，修改此容器的 Canvas Slot。 |
+| `PlayerVitals` | 左下锚点 `(0,1)`，Alignment `(0,1)`，位置 `(72,-64)`，尺寸 `436×116`。 | 整体移动生命与防御区，修改此容器的 Canvas Slot。 |
 | `PlayerHealthFrame` | 玩家区内位置 `(44,24)`，尺寸 `380×22`。 | 调整生命条总尺寸，保留内部残影、填充、边框的叠放关系。 |
 | `GuardPressureFrame` | 玩家区内位置 `(44,65)`，尺寸 `300×10`。 | 调整防御条长度和粗细。 |
-| `BossPanel` | 底部中间锚点，Alignment `(0.5,1)`，位置 `(0,-64)`，尺寸 `720×78`。 | 修改距底边的距离和整体宽度；同步调整内部名称、生命条和分割线。 |
+| `BossPanel` | 顶部中间锚点 `(0.5,0)`，Alignment `(0.5,0)`，位置 `(0,64)`，尺寸 `720×78`。 | 修改距顶边的距离和整体宽度；同步调整内部名称、生命条和分割线。 |
 | `HB_Abilities` | 右下锚点，Alignment `(1,1)`，位置 `(-72,-64)`，Auto Size 开启。 | 修改距右下角的距离；默认无技能时隐藏。 |
 
 这些是 Designer 设计单位，实际显示还受视口和项目 DPI 缩放影响。资源条保留局部半透明暗色轨道以便在亮场景中阅读，区域容器本身不绘制整块背景。
+
+位置已调整为玩家左下、Boss 顶部中央。维护脚本 `Scripts/Editor/reposition_combat_hud.py` 只修改这两个现有容器的锚点、对齐与位置，执行前备份至 `Saved/HUD/BeforeReposition/`，不重建 Designer 树。
+
+本次重排已完整编译并通过 Main 的 1920×1080 运行检查，查看截图确认左下玩家状态区和顶部中央 Boss 区域位置正确；日志 `Saved/Logs/CombatHUDPlacementSmoke.log` 中为 `HUD_MAIN_SMOKE_PASS`。
 
 ## 颜色与设计预览
 

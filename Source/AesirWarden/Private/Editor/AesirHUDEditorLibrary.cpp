@@ -6,6 +6,7 @@
 #if WITH_EDITOR
 #include "Animation/WidgetAnimation.h"
 #include "Blueprint/WidgetTree.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
@@ -205,6 +206,82 @@ bool UAesirHUDEditorLibrary::UpgradeCombatHUD(bool bRebuildLayout)
 	}
 	UE_LOG(LogAesirWarden, Log, TEXT("HUD upgrade: saved %s, %s Designer layout. Existing graphs and Player Blueprint asset reference are retained; no extra HUD is created."),
 		*Blueprint->GetPathName(), bInstallLayout ? TEXT("installed editable") : TEXT("preserved user"));
+	return true;
+#else
+	return false;
+#endif
+}
+
+bool UAesirHUDEditorLibrary::RepositionCombatHUD()
+{
+#if WITH_EDITOR
+	using namespace AesirHUDEditor;
+	if (GEditor && GEditor->PlayWorld)
+	{
+		UE_LOG(LogAesirWarden, Error, TEXT("HUD reposition: stop Play/Simulate before editing Designer slots."));
+		return false;
+	}
+	UWidgetBlueprint* Blueprint = LoadObject<UWidgetBlueprint>(nullptr,
+		TEXT("/Game/Aesir/UI/HealthBars/WBP_CombatHUD.WBP_CombatHUD"), nullptr, LOAD_NoWarn);
+	if (!Blueprint || Blueprint->ParentClass != UAesirCombatHUDWidget::StaticClass() || !Blueprint->WidgetTree)
+	{
+		UE_LOG(LogAesirWarden, Error, TEXT("HUD reposition: expected the existing upgraded WBP_CombatHUD and its Designer tree."));
+		return false;
+	}
+	UPackage* Package = Blueprint->GetOutermost();
+	if (Package->IsDirty())
+	{
+		UE_LOG(LogAesirWarden, Error, TEXT("HUD reposition: save the HUD before creating its disk backup and changing positions."));
+		return false;
+	}
+	UWidget* PlayerVitals = Blueprint->WidgetTree->FindWidget(TEXT("PlayerVitals"));
+	UWidget* BossPanel = Blueprint->WidgetTree->FindWidget(TEXT("BossPanel"));
+	UCanvasPanelSlot* PlayerSlot = PlayerVitals ? Cast<UCanvasPanelSlot>(PlayerVitals->Slot) : nullptr;
+	UCanvasPanelSlot* BossSlot = BossPanel ? Cast<UCanvasPanelSlot>(BossPanel->Slot) : nullptr;
+	if (!PlayerSlot || !BossSlot)
+	{
+		UE_LOG(LogAesirWarden, Error, TEXT("HUD reposition: PlayerVitals and BossPanel must retain their Canvas slots. Existing content is preserved."));
+		return false;
+	}
+	const FAnchorData OriginalPlayerLayout = PlayerSlot->GetLayout();
+	const FAnchorData OriginalBossLayout = BossSlot->GetLayout();
+	const FScopedTransaction Transaction(NSLOCTEXT("AesirHUDEditor", "RepositionHUD", "Reposition Aesir combat HUD"));
+	Blueprint->Modify();
+	PlayerSlot->Modify();
+	BossSlot->Modify();
+	auto RestoreLayout = [&]()
+	{
+		PlayerSlot->SetLayout(OriginalPlayerLayout);
+		BossSlot->SetLayout(OriginalBossLayout);
+		FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
+		const bool bRestored = Compile(Blueprint);
+		Package->SetDirtyFlag(false);
+		UE_LOG(LogAesirWarden, Error, TEXT("HUD reposition: original slot layouts restored in memory (%s). No replacement Designer tree was created."),
+			bRestored ? TEXT("compile OK") : TEXT("inspect Blueprint errors before continuing"));
+	};
+	PlayerSlot->SetAnchors(FAnchors(0.0f, 1.0f));
+	PlayerSlot->SetAlignment(FVector2D(0.0f, 1.0f));
+	PlayerSlot->SetPosition(FVector2D(72.0f, -64.0f));
+	BossSlot->SetAnchors(FAnchors(0.5f, 0.0f));
+	BossSlot->SetAlignment(FVector2D(0.5f, 0.0f));
+	BossSlot->SetPosition(FVector2D(0.0f, 64.0f));
+	FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
+	if (!Compile(Blueprint))
+	{
+		RestoreLayout();
+		return false;
+	}
+	Blueprint->MarkPackageDirty();
+	const FString Filename = FPackageName::LongPackageNameToFilename(Package->GetName(), FPackageName::GetAssetPackageExtension());
+	FSavePackageArgs SaveArgs;
+	SaveArgs.TopLevelFlags = RF_Public | RF_Standalone;
+	SaveArgs.SaveFlags = SAVE_NoError;
+	if (!UPackage::SavePackage(Package, Blueprint, *Filename, SaveArgs))
+	{
+		RestoreLayout();
+		return false;
+	}
+	UE_LOG(LogAesirWarden, Log, TEXT("HUD reposition: saved PlayerVitals at bottom-left (72,-64) and BossPanel at top-center (0,64). Sizes, children and graphs retained."));
 	return true;
 #else
 	return false;

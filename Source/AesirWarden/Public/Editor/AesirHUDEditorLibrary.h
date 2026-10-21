@@ -20,4 +20,8 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Aesir|Editor", meta = (DevelopmentOnly))
 	static bool UpgradeCombatHUD(bool bRebuildLayout = false);
+
+	/** Move only the two existing HUD containers; retain their size, contents and all authored graphs. */
+	UFUNCTION(BlueprintCallable, Category = "Aesir|Editor", meta = (DevelopmentOnly))
+	static bool RepositionCombatHUD();
 };

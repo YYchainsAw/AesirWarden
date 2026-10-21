@@ -141,7 +141,7 @@ void UAesirCombatHUDWidget::BuildDefaultHUDTree(UWidgetTree* Tree)
 	// No full panel paints a background. Only the local bar tracks and transparent borders draw.
 	UCanvasPanel* PlayerPanel = Tree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("PlayerVitals"));
 	PlayerPanel->bIsVariable = false;
-	Place(Canvas, PlayerPanel, FVector2D(72.0f, 64.0f), FVector2D(436.0f, 116.0f));
+	Place(Canvas, PlayerPanel, FVector2D(72.0f, -64.0f), FVector2D(436.0f, 116.0f), FVector2D(0.0f, 1.0f), FVector2D(0.0f, 1.0f));
 	Place(PlayerPanel, MakeIcon(TEXT("Img_Health"), TEXT("/Game/Aesir/UI/Art/Emberhold/T_EH_heart.T_EH_heart")),
 		FVector2D(0.0f, 18.0f), FVector2D(30.0f, 30.0f));
 	Place(PlayerPanel, MakeText(TEXT("Txt_PlayerHealth"), LOCTEXT("HealthPreview", "720 / 1000"), 20, ETextJustify::Right),
@@ -167,7 +167,7 @@ void UAesirCombatHUDWidget::BuildDefaultHUDTree(UWidgetTree* Tree)
 	UCanvasPanel* Boss = Tree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("BossPanel"));
 	Boss->bIsVariable = false;
 	Boss->SetVisibility(ESlateVisibility::HitTestInvisible);
-	Place(Canvas, Boss, FVector2D(0.0f, -64.0f), FVector2D(720.0f, 78.0f), FVector2D(0.5f, 1.0f), FVector2D(0.5f, 1.0f));
+	Place(Canvas, Boss, FVector2D(0.0f, 64.0f), FVector2D(720.0f, 78.0f), FVector2D(0.5f, 0.0f), FVector2D(0.5f, 0.0f));
 	Place(Boss, MakeText(TEXT("Txt_BossName"), LOCTEXT("BossPreview", "守望者"), 26, ETextJustify::Center),
 		FVector2D(0.0f, -4.0f), FVector2D(720.0f, 42.0f));
 	UOverlay* BossHealth = Tree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("BossHealthFrame"));
