@@ -20,4 +20,8 @@ public:
 	/** Explicitly replace only the menu Designer tree with the transparent golden-section layout. */
 	UFUNCTION(BlueprintCallable, Category = "Aesir|Editor", meta = (DevelopmentOnly))
 	static bool RebuildCampfireMenuLayout();
+
+	/** Create/verify the reusable guide Blueprint without editing a map or existing Blueprint defaults. */
+	UFUNCTION(BlueprintCallable, Category = "Aesir|Editor", meta = (DevelopmentOnly))
+	static bool CreateCameraGuideAsset();
 };

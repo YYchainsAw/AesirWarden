@@ -17,6 +17,7 @@
 #include "Engine/FontFace.h"
 #include "Fonts/CompositeFont.h"
 #include "Framework/Flow/AesirCampfireStart.h"
+#include "Framework/Camera/AesirCameraGuideTrigger.h"
 #include "HAL/FileManager.h"
 #include "Kismet2/CompilerResultsLog.h"
 #include "Kismet2/KismetEditorUtilities.h"
@@ -274,6 +275,20 @@ bool UAesirStartMenuEditorLibrary::RebuildCampfireMenuLayout()
 	Defaults->DesignTimeSize = FVector2D(1920.0, 1080.0);
 	Defaults->DesignSizeMode = EDesignPreviewSizeMode::FillScreen;
 	return SaveBlueprint(Blueprint);
+#else
+	return false;
+#endif
+}
+
+bool UAesirStartMenuEditorLibrary::CreateCameraGuideAsset()
+{
+#if WITH_EDITOR
+	using namespace AesirStartMenuEditor;
+	bool bCreated = false;
+	UBlueprint* Blueprint = LoadOrCreateBlueprint(
+		TEXT("/Game/Aesir/Framework/Camera/BP_CameraGuideTrigger"), AAesirCameraGuideTrigger::StaticClass(),
+		UBlueprint::StaticClass(), UBlueprintGeneratedClass::StaticClass(), bCreated);
+	return Blueprint && CompileBlueprint(Blueprint) && (!bCreated || SaveBlueprint(Blueprint));
 #else
 	return false;
 #endif
