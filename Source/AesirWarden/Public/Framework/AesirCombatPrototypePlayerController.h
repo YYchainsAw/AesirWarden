@@ -4,12 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Framework/Flow/AesirLevelFlowTypes.h"
 #include "AesirCombatPrototypePlayerController.generated.h"
 
 
 class UInputMappingContext;
 class UUserWidget;
 class UInputAction;
+class AAesirLevelFlowDirector;
+class UAesirHealthComponent;
+class IInputProcessor;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -23,15 +27,15 @@ class AAesirCombatPrototypePlayerController : public APlayerController
 public:
 	bool IsCompanionChatOpen() const;
 
+	UFUNCTION(BlueprintCallable, Category = "UI|Companion Chat")
+	void CloseCompanionChat();
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Companion Chat")
 	TObjectPtr<UInputAction> ToggleCompanionChatAction;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Companion Chat")
 	TSubclassOf<UUserWidget> CompanionChatWidgetClass;
-	
-	UFUNCTION(BlueprintCallable, Category = "UI|Companion Chat")
-	void CloseCompanionChat();
 	
 	/** Input Mapping Contexts */
 	UPROPERTY(EditAnywhere, Category ="Input|Input Mappings")
@@ -55,6 +59,9 @@ protected:
 
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void OnPossess(APawn* InPawn) override;
+	virtual void OnUnPossess() override;
 
 	/** Input mapping context setup */
 	virtual void SetupInputComponent() override;
@@ -65,8 +72,24 @@ protected:
 private:
 	void ToggleCompanionChat();
 
-	void SetCompanionChatOpen(bool bOpen);
+	void SetCompanionChatOpen(bool bOpen, bool bRestoreGameplay = true);
+	bool CanOpenCompanionChat() const;
+	void UnbindPawnHealth();
+
+	UFUNCTION()
+	void HandleFlowStateChanged(EAesirLevelFlowState PreviousState, EAesirLevelFlowState NewState);
+
+	UFUNCTION()
+	void HandlePlayerDeath(AController* InstigatedBy, AActor* DamageCauser);
+
+	UFUNCTION()
+	void HandleConversationReset();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UUserWidget> CompanionChatWidget;
+
+	TWeakObjectPtr<AAesirLevelFlowDirector> ChatFlowDirector;
+	TWeakObjectPtr<UAesirHealthComponent> ChatPawnHealth;
+	bool bOwnsChatInputLocks = false;
+	TSharedPtr<IInputProcessor> ChatInputProcessor;
 };

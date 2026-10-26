@@ -1,534 +1,595 @@
 #include "Services/Companion/CompanionChatSubsystem.h"
 
-#include "Framework/AesirCombatPrototypePlayerController.h"
-#include "Characters/Player/AesirPlayerCharacter.h"
-#include "Characters/Companion/AesirCompanionCharacter.h"
 #include "AesirWarden.h"
-#include "Combat/AesirHealthComponent.h"
 #include "AI/Companion/TacticalOrderComponent.h"
-#include "Containers/Ticker.h"
+#include "Characters/Companion/AesirCompanionCharacter.h"
+#include "Characters/Player/AesirPlayerCharacter.h"
+#include "Combat/AesirHealthComponent.h"
 #include "Dom/JsonObject.h"
+#include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Framework/AesirCombatPrototypeGameMode.h"
+#include "Framework/AesirCombatPrototypePlayerController.h"
+#include "Framework/Flow/AesirLevelFlowDirector.h"
+#include "GenericPlatform/GenericPlatformHttp.h"
+#include "HAL/PlatformMisc.h"
 #include "HAL/PlatformTime.h"
-#include "Http.h"
 #include "HttpModule.h"
 #include "Interfaces/IHttpRequest.h"
 #include "Interfaces/IHttpResponse.h"
+#include "Internationalization/Regex.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/ConfigCacheIni.h"
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
 
 namespace
 {
-	constexpr float HeartbeatIntervalSeconds = 3.0f;
-	constexpr TCHAR PlayerId[] = TEXT("party.player");
+constexpr double HeartbeatInterval = 3.0;
+constexpr int32 MaxQueuedMessages = 8;
+constexpr int32 MaxRequestAgeMs = 8000;
+constexpr int32 MaxSnapshotAgeMs = 8000;
+constexpr TCHAR PlayerTarget[] = TEXT("party.player");
 
-	float HealthPercent(const UAesirHealthComponent* Health)
+FString NewId() { return FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensLower); }
+
+bool IsServiceUrl(const FString& Value)
+{
+	// HTTP is a development-only loopback transport. Remote credentials require HTTPS.
+	static const FRegexPattern Pattern(TEXT("^(https://([A-Za-z0-9.-]+|\\[[0-9A-Fa-f:]+\\])(:[0-9]{1,5})?|http://(127\\.0\\.0\\.1|localhost|\\[::1\\])(:[0-9]{1,5})?)/?$"));
+	FRegexMatcher Matcher(Pattern, Value);
+	return Matcher.FindNext();
+}
+
+bool IsCompanionId(const FString& Value)
+{
+	if (Value.IsEmpty() || Value.Len() > 100 || Value.Contains(TEXT(".."))) { return false; }
+	for (TCHAR C : Value)
 	{
-		return FMath::Clamp(
-			100.0f * Health->GetCurrentHealth() / Health->GetMaxHealth(),
-			0.0f,
-			100.0f);
+		if (!(FChar::IsAlnum(C) || C == '.' || C == '_' || C == '-')) { return false; }
 	}
+	return true;
+}
+
+void OverrideEnvironment(const TCHAR* Name, FString& Value)
+{
+	const FString Override = FPlatformMisc::GetEnvironmentVariable(Name);
+	if (!Override.IsEmpty()) { Value = Override; }
+}
 }
 
 void UCompanionChatSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	const TCHAR* Section = TEXT("Aesir.Companion");
+	GConfig->GetString(Section, TEXT("ServiceBaseUrl"), ServiceBaseUrl, GGameIni);
+	GConfig->GetString(Section, TEXT("GameId"), ExpectedGameId, GGameIni);
+	GConfig->GetString(Section, TEXT("SaveId"), CurrentSaveId, GGameIni);
+	GConfig->GetString(Section, TEXT("CompanionId"), SelectedCompanionId, GGameIni);
+	GConfig->GetBool(Section, TEXT("RequireBearer"), bRequireBearer, GGameIni);
+	OverrideEnvironment(TEXT("AESIR_NPC_BASE_URL"), ServiceBaseUrl);
+	OverrideEnvironment(TEXT("AESIR_NPC_GAME_ID"), ExpectedGameId);
+	OverrideEnvironment(TEXT("AESIR_NPC_SAVE_ID"), CurrentSaveId);
+	OverrideEnvironment(TEXT("AESIR_NPC_COMPANION_ID"), SelectedCompanionId);
+	BearerToken = FPlatformMisc::GetEnvironmentVariable(TEXT("AESIR_NPC_BEARER_TOKEN"));
+	ServiceBaseUrl.RemoveFromEnd(TEXT("/"));
+	FGuid SaveGuid;
+	if (FGuid::Parse(CurrentSaveId, SaveGuid))
+	{
+		CurrentSaveId = SaveGuid.ToString(EGuidFormats::DigitsWithHyphensLower);
+	}
 	HeartbeatTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
-		FTickerDelegate::CreateUObject(this, &UCompanionChatSubsystem::TickHeartbeat),
-		HeartbeatIntervalSeconds);
+		FTickerDelegate::CreateUObject(this, &UCompanionChatSubsystem::TickHeartbeat), 0.1f);
+	WorldCleanupHandle = FWorldDelegates::OnWorldCleanup.AddUObject(this, &UCompanionChatSubsystem::HandleWorldCleanup);
 }
 
 void UCompanionChatSubsystem::Deinitialize()
 {
 	FTSTicker::GetCoreTicker().RemoveTicker(HeartbeatTickerHandle);
-	bHeartbeatInFlight = false;
+	FWorldDelegates::OnWorldCleanup.Remove(WorldCleanupHandle);
+	InvalidateSession(true);
+	BearerToken.Empty();
 	Super::Deinitialize();
+}
+
+bool UCompanionChatSubsystem::ConfigureSession(const FString& BaseUrl, const FString& GameId, const FString& SaveId)
+{
+	if (bInvalidating) { return false; }
+	FGuid SaveGuid;
+	if (!FGuid::Parse(SaveId, SaveGuid) || GameId.IsEmpty() || !IsServiceUrl(BaseUrl))
+	{
+		OnRequestFailed.Broadcast(TEXT("队友服务配置无效：需要服务地址、游戏标识和存档 UUID。"));
+		return false;
+	}
+	InvalidateSession(true);
+	ServiceBaseUrl = BaseUrl;
+	ServiceBaseUrl.RemoveFromEnd(TEXT("/"));
+	ExpectedGameId = GameId;
+	CurrentSaveId = SaveGuid.ToString(EGuidFormats::DigitsWithHyphensLower);
+	BearerToken = FPlatformMisc::GetEnvironmentVariable(TEXT("AESIR_NPC_BEARER_TOKEN"));
+	bReconnectRequired = false;
+	return true;
+}
+
+void UCompanionChatSubsystem::SetSelectedCompanionId(const FString& CompanionId)
+{
+	if (bInvalidating) { return; }
+	if (!IsCompanionId(CompanionId)) { OnRequestFailed.Broadcast(TEXT("队友标识无效。")); return; }
+	if (CompanionId == SelectedCompanionId) { return; }
+	// One run is shared by all NPCs in this save; only the selected NPC's epoch changes.
+	SelectedCompanionId = CompanionId;
+	InvalidateSession(false, true);
+	bReconnectRequired = false;
+}
+
+void UCompanionChatSubsystem::ResetConversation()
+{
+	InvalidateSession(true);
+	bReconnectRequired = false;
+}
+
+void UCompanionChatSubsystem::HandleWorldCleanup(UWorld* World, bool, bool)
+{
+	if (SessionWorld.Get() == World) { InvalidateSession(true); }
+}
+
+bool UCompanionChatSubsystem::IsExplorationActive() const
+{
+	UWorld* World = GetWorld();
+	if (!IsValid(World) || !World->IsGameWorld()) { return false; }
+	if (const AAesirCombatPrototypeGameMode* Mode = World->GetAuthGameMode<AAesirCombatPrototypeGameMode>())
+	{
+		if (Mode->GetMatchResult() != EAesirMatchResult::None) { return false; }
+	}
+	for (TActorIterator<AAesirLevelFlowDirector> It(World); It; ++It)
+	{
+		if (IsValid(*It)) { return It->GetFlowState() == EAesirLevelFlowState::Exploration; }
+	}
+	return true; // Maps without a director are exploration sandboxes.
+}
+
+bool UCompanionChatSubsystem::RefreshLocalContext()
+{
+	if (bInvalidating) { return false; }
+	const FString NewToken = FPlatformMisc::GetEnvironmentVariable(TEXT("AESIR_NPC_BEARER_TOKEN"));
+	if (NewToken != BearerToken)
+	{
+		InvalidateSession(true);
+		BearerToken = NewToken;
+		bReconnectRequired = false;
+	}
+	UWorld* World = GetWorld();
+	APawn* Player = IsValid(World) ? UGameplayStatics::GetPlayerPawn(World, 0) : nullptr;
+	AAesirCompanionCharacter* Companion = nullptr;
+	if (IsExplorationActive())
+	{
+		for (TActorIterator<AAesirCompanionCharacter> It(World); It; ++It)
+		{
+			if (IsValid(*It) && It->GetCompanionId().ToString() == SelectedCompanionId) { Companion = *It; break; }
+		}
+	}
+	const UAesirHealthComponent* Health = IsValid(Companion) ? Companion->FindComponentByClass<UAesirHealthComponent>() : nullptr;
+	bool bAlive = IsValid(Player) && IsValid(Health) && Health->GetCurrentHealth() > 0.0f;
+	if (const AAesirPlayerCharacter* AesirPlayer = Cast<AAesirPlayerCharacter>(Player))
+	{
+		bAlive &= AesirPlayer->GetGASHealth() > 0.0f;
+	}
+	const UTacticalOrderComponent* Orders = IsValid(Companion) ? Companion->FindComponentByClass<UTacticalOrderComponent>() : nullptr;
+	if (IsValid(Orders) && Orders->IsEncounterActive()) { bAlive = false; }
+	if (!bAlive)
+	{
+		if (bContextActive || bConnecting || bBindingReady || !DesiredRunId.IsEmpty()) { InvalidateSession(true); }
+		return false;
+	}
+	if (bContextActive && (SessionWorld.Get() != World || SessionPlayer.Get() != Player || SessionCompanion.Get() != Companion))
+	{
+		InvalidateSession(true);
+	}
+	if (!bContextActive)
+	{
+		SessionWorld = World;
+		SessionPlayer = Player;
+		SessionCompanion = Companion;
+		bContextActive = true;
+		if (DesiredRunId.IsEmpty()) { DesiredRunId = NewId(); }
+	}
+	return true;
 }
 
 bool UCompanionChatSubsystem::TickHeartbeat(float)
 {
-	if (!bHeartbeatInFlight)
+	if (!RefreshLocalContext()) { return true; }
+	if (!PendingSteps.IsEmpty()) { PumpQueue(); }
+	const double Now = FPlatformTime::Seconds();
+	if (Now >= NextHeartbeatAt && !ActiveStep.IsValid() && PendingSteps.IsEmpty() &&
+		!bConnecting && !bReconnectRequired && !UncertainStep.IsValid())
 	{
-		SendAgentStep(FString(), false);
+		FGuid SaveGuid;
+		if (FGuid::Parse(CurrentSaveId, SaveGuid))
+		{
+			auto Step = MakeShared<FPendingStep>();
+			Step->RequestId = NewId();
+			PendingSteps.Add(Step);
+			PumpQueue();
+		}
+		NextHeartbeatAt = Now + HeartbeatInterval;
 	}
 	return true;
 }
 
 void UCompanionChatSubsystem::SendChatMessage(const FString& Text)
 {
-	const FString TrimmedText = Text.TrimStartAndEnd();
-	if (TrimmedText.IsEmpty())
+	if (bInvalidating) { return; }
+	const FString Trimmed = Text.TrimStartAndEnd();
+	if (Trimmed.IsEmpty() || Trimmed.Len() > 500) { OnRequestFailed.Broadcast(TEXT("请输入 1 到 500 个字符。")); return; }
+	FGuid SaveGuid;
+	if (!FGuid::Parse(CurrentSaveId, SaveGuid))
 	{
-		OnRequestFailed.Broadcast(TEXT("请输入指令。"));
-		return;
+		OnRequestFailed.Broadcast(TEXT("队友服务尚未关联当前存档，请先完成连接配置。")); return;
 	}
-
-	if (TrimmedText.Len() > 500)
+	if (!RefreshLocalContext())
 	{
-		OnRequestFailed.Broadcast(TEXT("指令不能超过 500 个字符。"));
-		return;
+		OnRequestFailed.Broadcast(TEXT("当前无法对话：请在探索阶段选择存活的队友。")); return;
 	}
-
-	SendAgentStep(TrimmedText, true);
+	if (bRequireBearer && BearerToken.IsEmpty())
+	{
+		OnRequestFailed.Broadcast(TEXT("队友服务缺少登录凭据，请重新连接。")); return;
+	}
+	if (UncertainStep.IsValid())
+	{
+		OnRequestFailed.Broadcast(TEXT("上一条请求结果未确认；可在原预算内重试，或取消后再发送新指令。")); return;
+	}
+	if (PendingSteps.Num() >= MaxQueuedMessages)
+	{
+		OnRequestFailed.Broadcast(TEXT("待发送消息已满，请等待当前对话完成。")); return;
+	}
+	bReconnectRequired = false;
+	auto Step = MakeShared<FPendingStep>();
+	Step->RequestId = NewId();
+	Step->Text = Trimmed;
+	Step->bPlayerCommand = true;
+	PendingSteps.Add(Step);
+	PumpQueue();
 }
 
-bool UCompanionChatSubsystem::BuildWorldContext(
-	TSharedRef<FJsonObject>& OutContext,
-	TSet<FString>& OutAllowedTargetIds,
-	FString& OutCompanionId,
-	FString& OutSnapshotId,
-	FString& OutScene,
-	bool& bOutEncounterActive) const
+void UCompanionChatSubsystem::PumpQueue()
 {
-	UWorld* World = GetWorld();
-	if (!IsValid(World) || !World->IsGameWorld())
+	if (bConnecting || ActiveStep.IsValid() || bReconnectRequired || UncertainStep.IsValid() || PendingSteps.IsEmpty() || !bContextActive) { return; }
+	if (!IsServiceUrl(ServiceBaseUrl) || !IsCompanionId(SelectedCompanionId))
 	{
+		FailSession(TEXT("队友服务配置无效：远程服务需要 HTTPS，本地开发使用回环 HTTP 地址。")); return;
+	}
+	if (!bBindingReady) { DiscoverContext(); return; }
+	ActiveStep = PendingSteps[0];
+	PendingSteps.RemoveAt(0);
+	SendAgentStep(ActiveStep);
+}
+
+FHttpRequestPtr UCompanionChatSubsystem::MakeRequest(const FString& Path, const TSharedPtr<FJsonObject>& Body)
+{
+	FHttpRequestPtr Request = FHttpModule::Get().CreateRequest();
+	Request->SetURL(ServiceBaseUrl + TEXT("/v1/scoped") + Path);
+	Request->SetVerb(Body.IsValid() ? TEXT("POST") : TEXT("GET"));
+	Request->SetTimeout(8.0f);
+	Request->SetHeader(TEXT("Accept"), TEXT("application/json"));
+	if (!BearerToken.IsEmpty()) { Request->SetHeader(TEXT("Authorization"), TEXT("Bearer ") + BearerToken); }
+	if (Body.IsValid())
+	{
+		FString Json;
+		FJsonSerializer::Serialize(Body.ToSharedRef(), TJsonWriterFactory<>::Create(&Json));
+		Request->SetHeader(TEXT("Content-Type"), TEXT("application/json; charset=utf-8"));
+		Request->SetContentAsString(Json);
+	}
+	return Request;
+}
+
+bool UCompanionChatSubsystem::ReadResponse(FHttpResponsePtr Response, bool bSucceeded, TSharedPtr<FJsonObject>& Root, FString& Error) const
+{
+	if (!bSucceeded || !Response.IsValid())
+	{
+		Error = TEXT("队友服务连接中断；请求可能已提交，结果未确认。"); return false;
+	}
+	const bool bJson = FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Response->GetContentAsString()), Root) && Root.IsValid();
+	if (Response->GetResponseCode() < 200 || Response->GetResponseCode() >= 300)
+	{
+		FString Code;
+		const TSharedPtr<FJsonObject>* Detail;
+		if (bJson && Root->TryGetObjectField(TEXT("detail"), Detail)) { (*Detail)->TryGetStringField(TEXT("code"), Code); }
+		// Never echo remote bodies or messages, including authentication errors.
+		bool bSafeCode = Code.Len() <= 80;
+		for (TCHAR C : Code) { bSafeCode &= ((C >= 'A' && C <= 'Z') || (C >= '0' && C <= '9') || C == '_'); }
+		if (!bSafeCode) { Code.Empty(); }
+		Error = FString::Printf(TEXT("队友服务 HTTP %d %s；请检查凭据、存档权限或当前绑定。"), Response->GetResponseCode(), *Code);
 		return false;
 	}
+	if (!bJson) { Error = TEXT("队友服务返回了无效 JSON。"); return false; }
+	return true;
+}
 
-	AAesirCompanionCharacter* CompanionActor = nullptr;
-	for (TActorIterator<AAesirCompanionCharacter> It(World); It; ++It)
-	{
-		if (IsValid(*It) && !It->GetCompanionId().IsNone())
+void UCompanionChatSubsystem::DiscoverContext()
+{
+	if (bRequireBearer && BearerToken.IsEmpty()) { FailSession(TEXT("队友服务缺少 Bearer 凭据。")); return; }
+	bConnecting = true;
+	const int64 Generation = ContextGeneration;
+	ActiveHttpRequest = MakeRequest(FString::Printf(TEXT("/context?save_id=%s&companion_id=%s"),
+		*FGenericPlatformHttp::UrlEncode(CurrentSaveId), *FGenericPlatformHttp::UrlEncode(SelectedCompanionId)));
+	ActiveHttpRequest->OnProcessRequestComplete().BindWeakLambda(this,
+		[this, Generation](FHttpRequestPtr, FHttpResponsePtr Response, bool bSucceeded)
 		{
-			CompanionActor = *It;
-			break;
-		}
-	}
+			if (Generation != ContextGeneration || !RefreshLocalContext() || Generation != ContextGeneration) { return; }
+			ActiveHttpRequest.Reset();
+			TSharedPtr<FJsonObject> Root;
+			FString Error;
+			CompanionScoped::FBinding Discovered;
+			if (!ReadResponse(Response, bSucceeded, Root, Error) ||
+				!CompanionScoped::ParseContext(Root, CurrentSaveId, SelectedCompanionId, ExpectedGameId, Discovered, Error))
+			{
+				FailSession(Error); return;
+			}
+			if (Discovered.RunId == DesiredRunId && !Discovered.RunBindingId.IsEmpty() && Discovered.EncounterId.IsEmpty())
+			{
+				Binding = Discovered;
+				bBindingReady = true;
+				bConnecting = false;
+				PumpQueue();
+			}
+			else { BindRun(Discovered); }
+		});
+	if (!ActiveHttpRequest->ProcessRequest()) { ActiveHttpRequest.Reset(); FailSession(TEXT("无法发现队友服务。")); }
+}
 
-	ACharacter* PlayerActor = UGameplayStatics::GetPlayerCharacter(World, 0);
-	if (!IsValid(PlayerActor) || !IsValid(CompanionActor))
-	{
-		return false;
-	}
-
-	const UAesirHealthComponent* CompanionHealth =
-		CompanionActor->FindComponentByClass<UAesirHealthComponent>();
-	if (!IsValid(CompanionHealth) || CompanionHealth->GetMaxHealth() <= 0.0f)
-	{
-		return false;
-	}
-
-	float PlayerCurrentHealth = 0.0f;
-	float PlayerMaxHealth = 0.0f;
-	if (const AAesirPlayerCharacter* AesirPlayer =
-		Cast<AAesirPlayerCharacter>(PlayerActor))
-	{
-		PlayerCurrentHealth = AesirPlayer->GetGASHealth();
-		PlayerMaxHealth = AesirPlayer->GetGASMaxHealth();
-	}
-
-	if (PlayerMaxHealth <= 0.0f)
-	{
-		const UAesirHealthComponent* PlayerHealth =
-			PlayerActor->FindComponentByClass<UAesirHealthComponent>();
-		if (!IsValid(PlayerHealth) || PlayerHealth->GetMaxHealth() <= 0.0f)
+void UCompanionChatSubsystem::BindRun(const CompanionScoped::FBinding& Discovered)
+{
+	const FString ControlRequestId = NewId();
+	const FString NewRunId = DesiredRunId;
+	const int64 Generation = ContextGeneration;
+	ActiveHttpRequest = MakeRequest(TEXT("/runs/bind"), CompanionScoped::BuildBindBody(Discovered, ControlRequestId, NewRunId));
+	ActiveHttpRequest->OnProcessRequestComplete().BindWeakLambda(this,
+		[this, Discovered, Generation, ControlRequestId, NewRunId](FHttpRequestPtr, FHttpResponsePtr Response, bool bSucceeded)
 		{
-			return false;
-		}
-		PlayerCurrentHealth = PlayerHealth->GetCurrentHealth();
-		PlayerMaxHealth = PlayerHealth->GetMaxHealth();
-	}
+			if (Generation != ContextGeneration || !RefreshLocalContext() || Generation != ContextGeneration) { return; }
+			ActiveHttpRequest.Reset();
+			TSharedPtr<FJsonObject> Root;
+			FString Error;
+			CompanionScoped::FBinding Bound;
+			if (!ReadResponse(Response, bSucceeded, Root, Error) ||
+				!CompanionScoped::ParseBoundControl(Root, Discovered, ControlRequestId, NewRunId, Bound, Error))
+			{
+				FailSession(Error); return;
+			}
+			Binding = Bound;
+			bBindingReady = true;
+			bConnecting = false;
+			UE_LOG(LogAesirWarden, Display, TEXT("Companion scoped run bound: run=%s companion=%s"), *Binding.RunId, *Binding.CompanionId);
+			PumpQueue();
+		});
+	if (!ActiveHttpRequest->ProcessRequest()) { ActiveHttpRequest.Reset(); FailSession(TEXT("无法绑定队友服务。")); }
+}
 
-	OutCompanionId = CompanionActor->GetCompanionId().ToString();
-	OutSnapshotId = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensLower);
-	OutAllowedTargetIds.Add(PlayerId);
-	OutAllowedTargetIds.Add(OutCompanionId);
-
-	const UTacticalOrderComponent* TacticalOrders =
-		CompanionActor->FindComponentByClass<UTacticalOrderComponent>();
-	bOutEncounterActive = IsValid(TacticalOrders) &&
-		TacticalOrders->IsEncounterActive();
-	OutScene = bOutEncounterActive ? TEXT("combat") : TEXT("exploration");
-
-	const TSharedRef<FJsonObject> Player = MakeShared<FJsonObject>();
-	Player->SetStringField(TEXT("id"), PlayerId);
-	Player->SetNumberField(
-		TEXT("hp_percent"),
-		FMath::Clamp(100.0f * PlayerCurrentHealth / PlayerMaxHealth, 0.0f, 100.0f));
-	Player->SetBoolField(TEXT("is_downed"), PlayerCurrentHealth <= 0.0f);
-
-	const TSharedRef<FJsonObject> Companion = MakeShared<FJsonObject>();
-	Companion->SetStringField(TEXT("id"), OutCompanionId);
-	Companion->SetNumberField(TEXT("hp_percent"), HealthPercent(CompanionHealth));
-	// Alice has no MP AttributeSet yet. Zero means no available MP, never a ready skill.
-	Companion->SetNumberField(TEXT("mp_percent"), 0.0);
-	Companion->SetStringField(
-		TEXT("current_behavior"),
-		CompanionActor->GetVelocity().SizeSquared2D() > 25.0f
-			? TEXT("moving") : TEXT("idle"));
-	Companion->SetBoolField(TEXT("is_casting"), false);
-
-	const AAesirCombatPrototypePlayerController* PlayerController =
-		Cast<AAesirCombatPrototypePlayerController>(
-			UGameplayStatics::GetPlayerController(World, 0));
-
+bool UCompanionChatSubsystem::BuildWorldContext(TSharedRef<FJsonObject>& OutContext, FString& OutCompanionId, FString& OutSnapshotId) const
+{
+	const AAesirCompanionCharacter* Companion = SessionCompanion.Get();
+	const APawn* Player = SessionPlayer.Get();
+	if (!IsValid(Companion) || !IsValid(Player) || !IsExplorationActive()) { return false; }
+	const UAesirHealthComponent* Health = Companion->FindComponentByClass<UAesirHealthComponent>();
+	const AAesirPlayerCharacter* AesirPlayer = Cast<AAesirPlayerCharacter>(Player);
+	if (!IsValid(Health) || Health->GetMaxHealth() <= 0.0f || !AesirPlayer || AesirPlayer->GetGASMaxHealth() <= 0.0f) { return false; }
+	OutCompanionId = Companion->GetCompanionId().ToString();
+	OutSnapshotId = NewId();
+	auto PlayerJson = MakeShared<FJsonObject>();
+	PlayerJson->SetStringField(TEXT("id"), PlayerTarget);
+	PlayerJson->SetNumberField(TEXT("hp_percent"), FMath::Clamp(100.0f * AesirPlayer->GetGASHealth() / AesirPlayer->GetGASMaxHealth(), 0.0f, 100.0f));
+	PlayerJson->SetBoolField(TEXT("is_downed"), AesirPlayer->GetGASHealth() <= 0.0f);
+	auto CompanionJson = MakeShared<FJsonObject>();
+	CompanionJson->SetStringField(TEXT("id"), OutCompanionId);
+	CompanionJson->SetNumberField(TEXT("hp_percent"), FMath::Clamp(100.0f * Health->GetCurrentHealth() / Health->GetMaxHealth(), 0.0f, 100.0f));
+	CompanionJson->SetNumberField(TEXT("mp_percent"), 0.0);
+	CompanionJson->SetStringField(TEXT("current_behavior"), Companion->GetVelocity().SizeSquared2D() > 25.0f ? TEXT("moving") : TEXT("idle"));
+	CompanionJson->SetBoolField(TEXT("is_casting"), false);
 	OutContext->SetStringField(TEXT("snapshot_id"), OutSnapshotId);
-	OutContext->SetStringField(
-		TEXT("captured_at"), FDateTime::UtcNow().ToIso8601());
-	OutContext->SetStringField(TEXT("scene"), OutScene);
-	OutContext->SetObjectField(TEXT("player"), Player);
-	OutContext->SetObjectField(TEXT("companion"), Companion);
-	OutContext->SetBoolField(
-		TEXT("ui_popup"),
-		IsValid(PlayerController) && PlayerController->IsCompanionChatOpen());
-	// No interactable observation or complete combat snapshot is wired yet.
+	OutContext->SetStringField(TEXT("captured_at"), FDateTime::UtcNow().ToIso8601());
+	OutContext->SetStringField(TEXT("scene"), TEXT("exploration"));
+	OutContext->SetObjectField(TEXT("player"), PlayerJson);
+	OutContext->SetObjectField(TEXT("companion"), CompanionJson);
+	const AAesirCombatPrototypePlayerController* PC = Cast<AAesirCombatPrototypePlayerController>(Player->GetController());
+	OutContext->SetBoolField(TEXT("ui_popup"), IsValid(PC) && PC->IsCompanionChatOpen());
 	OutContext->SetArrayField(TEXT("interactables"), {});
 	return true;
 }
 
-void UCompanionChatSubsystem::SendAgentStep(
-	const FString& Text,
-	bool bPlayerCommand)
+void UCompanionChatSubsystem::SendAgentStep(TSharedPtr<FPendingStep> Step)
 {
-	TSharedRef<FJsonObject> Context = MakeShared<FJsonObject>();
-	TSet<FString> AllowedTargetIds;
-	FString CompanionId;
-	FString SnapshotId;
-	FString Scene;
-	bool bEncounterActive = false;
-	if (!BuildWorldContext(
-		Context,
-		AllowedTargetIds,
-		CompanionId,
-		SnapshotId,
-		Scene,
-		bEncounterActive))
+	if (!Step->WorldContext.IsValid())
 	{
-		if (bPlayerCommand)
+		Step->CapturedAt = FPlatformTime::Seconds();
+		TSharedRef<FJsonObject> WorldContext = MakeShared<FJsonObject>();
+		FString CompanionId;
+		if (!BuildWorldContext(WorldContext, CompanionId, Step->SnapshotId) || CompanionId != Binding.CompanionId)
 		{
-			ReportFailure(true, TEXT("无法读取当前玩家或队友状态。"));
+			ReportFailure(Step->bPlayerCommand, TEXT("无法读取当前探索场景。")); CompleteStep(Step); return;
 		}
-		return;
+		Step->WorldContext = WorldContext;
+		Step->FirstSentAt = FPlatformTime::Seconds();
+		Step->Binding = Binding;
+		Step->Generation = ContextGeneration;
 	}
-
-	const FString RequestId =
-		FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensLower);
-	const uint64 RequestSequence = ++NextRequestSequence;
-	if (bPlayerCommand)
+	const double Now = FPlatformTime::Seconds();
+	const double ElapsedMs = (Now - Step->FirstSentAt) * 1000.0;
+	const double CaptureAgeMs = (Now - Step->CapturedAt) * 1000.0;
+	if (ElapsedMs >= MaxRequestAgeMs || CaptureAgeMs >= MaxSnapshotAgeMs || Step->Generation != ContextGeneration)
 	{
-		LatestPlayerCommandSequence = RequestSequence;
+		ReportFailure(Step->bPlayerCommand, TEXT("原请求预算已过期，旧请求不会重新执行。")); CompleteStep(Step); return;
 	}
-
-	const TSharedRef<FJsonObject> Body = MakeShared<FJsonObject>();
-	Body->SetStringField(TEXT("protocol_version"), TEXT("0.3"));
-	Body->SetStringField(TEXT("request_id"), RequestId);
-	Body->SetStringField(TEXT("companion_id"), CompanionId);
-	Body->SetObjectField(TEXT("world_context"), Context);
-	if (bPlayerCommand)
+	auto Body = CompanionScoped::BuildScopedBody(Step->Binding, Step->RequestId);
+	Body->SetObjectField(TEXT("world_context"), Step->WorldContext);
+	if (Step->bPlayerCommand) { Body->SetStringField(TEXT("text"), Step->Text); }
+	auto Timing = MakeShared<FJsonObject>();
+	Timing->SetNumberField(TEXT("capture_age_ms"), FMath::FloorToInt(CaptureAgeMs));
+	Timing->SetNumberField(TEXT("request_age_ms"), FMath::FloorToInt(ElapsedMs));
+	Timing->SetNumberField(TEXT("max_snapshot_age_ms"), MaxSnapshotAgeMs);
+	Timing->SetNumberField(TEXT("max_request_age_ms"), MaxRequestAgeMs);
+	Body->SetObjectField(TEXT("timing"), Timing);
+	if (Step->bPlayerCommand)
 	{
-		Body->SetStringField(TEXT("text"), Text);
+		UE_LOG(LogAesirWarden, Display, TEXT("Companion scoped request: request=%s run=%s companion=%s age_ms=%.1f"),
+			*Step->RequestId, *Step->Binding.RunId, *Step->Binding.CompanionId, ElapsedMs);
 	}
-
-	FString JsonBody;
-	if (!FJsonSerializer::Serialize(
-		Body,
-		TJsonWriterFactory<>::Create(&JsonBody)))
+	ActiveHttpRequest = MakeRequest(TEXT("/agent/step"), Body);
+	ActiveHttpRequest->OnProcessRequestComplete().BindUObject(this, &UCompanionChatSubsystem::HandleAgentStepResponse, Step);
+	if (!ActiveHttpRequest->ProcessRequest())
 	{
-		ReportFailure(bPlayerCommand, TEXT("无法创建队友 AI 请求。"));
-		return;
-	}
-
-	const TSharedRef<IHttpRequest> Request =
-		FHttpModule::Get().CreateRequest();
-	Request->SetURL(ServiceBaseUrl + TEXT("/v1/agent/step"));
-	Request->SetVerb(TEXT("POST"));
-	Request->SetTimeout(bPlayerCommand ? 5.0f : 2.5f);
-	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json; charset=utf-8"));
-	Request->SetHeader(TEXT("Accept"), TEXT("application/json"));
-	Request->SetContentAsString(JsonBody);
-	Request->OnProcessRequestComplete().BindUObject(
-		this,
-		&UCompanionChatSubsystem::HandleAgentStepResponse,
-		RequestId,
-		SnapshotId,
-		CompanionId,
-		Scene,
-		AllowedTargetIds,
-		bPlayerCommand,
-		bEncounterActive,
-		RequestSequence,
-		FPlatformTime::Seconds());
-
-	if (!bPlayerCommand)
-	{
-		bHeartbeatInFlight = true;
-	}
-	if (!Request->ProcessRequest())
-	{
-		if (!bPlayerCommand)
+		ActiveHttpRequest.Reset();
+		if (Step->bPlayerCommand)
 		{
-			bHeartbeatInFlight = false;
+			ActiveStep.Reset(); UncertainStep = Step;
+			ReportFailure(true, TEXT("队友请求未能发送；可重试原请求或取消。"));
 		}
-		ReportFailure(bPlayerCommand, TEXT("无法启动队友 AI 请求。"));
+		else { FailSession(TEXT("队友心跳未能发送；发送消息时将重新连接。")); }
 	}
 }
 
-void UCompanionChatSubsystem::ReportFailure(
-	bool bPlayerCommand,
-	const FString& Message)
+bool UCompanionChatSubsystem::RetryLastMessage()
 {
-	if (bPlayerCommand)
+	if (!RefreshLocalContext() || !UncertainStep.IsValid() || ActiveStep.IsValid() || UncertainStep->Generation != ContextGeneration) { return false; }
+	ActiveStep = UncertainStep;
+	UncertainStep.Reset();
+	SendAgentStep(ActiveStep);
+	return true;
+}
+
+void UCompanionChatSubsystem::HandleAgentStepResponse(FHttpRequestPtr, FHttpResponsePtr Response, bool bSucceeded, TSharedPtr<FPendingStep> Step)
+{
+	if (Step->Generation != ContextGeneration || ActiveStep != Step || !RefreshLocalContext() || Step->Generation != ContextGeneration) { return; }
+	ActiveHttpRequest.Reset();
+	TSharedPtr<FJsonObject> Root;
+	FString Error;
+	if (!ReadResponse(Response, bSucceeded, Root, Error))
 	{
-		OnRequestFailed.Broadcast(Message);
+		UE_LOG(LogAesirWarden, Display, TEXT("Companion scoped response unavailable: request=%s elapsed_ms=%.1f"),
+			*Step->RequestId, (FPlatformTime::Seconds() - Step->FirstSentAt) * 1000.0);
+		if (!Step->bPlayerCommand)
+		{
+			// A failed background probe cannot monopolize the player's recovery slot.
+			FailSession(Error);
+		}
+		else if (!bSucceeded || !Response.IsValid() || Response->GetResponseCode() >= 500 ||
+			(Response->GetResponseCode() >= 200 && Response->GetResponseCode() < 300))
+		{
+			ActiveStep.Reset(); UncertainStep = Step;
+			ReportFailure(Step->bPlayerCommand, Error + TEXT(" 可重试原请求或取消，不会自动换 ID 重做。"));
+		}
+		else { FailSession(Error); }
+		return;
 	}
+	FCompanionChatReply Reply;
+	FCompanionAgentDirective Directive;
+	bool bHasDirective = false;
+	const double Now = FPlatformTime::Seconds();
+	if ((Now - Step->CapturedAt) * 1000.0 >= MaxSnapshotAgeMs ||
+		!CompanionScoped::ValidateAgentResponse(Root, Step->Binding, Step->RequestId, Step->SnapshotId, Step->FirstSentAt, Now, Reply, Directive, bHasDirective, Error))
+	{
+		ReportFailure(Step->bPlayerCommand, Error.IsEmpty() ? TEXT("队友响应使用的快照已过期。") : Error); CompleteStep(Step); return;
+	}
+	if (bHasDirective)
+	{
+		Directive.ContextGeneration = ContextGeneration;
+		if (IsDirectiveCurrent(Directive) && !AppliedDirectiveIds.Contains(Directive.DirectiveId))
+		{
+			if (AppliedDirectiveIds.Num() >= 4096) { FailSession(TEXT("当前对话指令记录已满，请重新开始对话。")); return; }
+			AppliedDirectiveIds.Add(Directive.DirectiveId);
+			OnDirectiveReceived.Broadcast(Directive);
+		}
+	}
+	if (Step->Generation != ContextGeneration) { return; }
+	bHeartbeatFailureLogged = false;
+	UE_LOG(LogAesirWarden, Display, TEXT("Companion scoped response: request=%s run=%s companion=%s directive=%s elapsed_ms=%.1f"),
+		*Step->RequestId, *Step->Binding.RunId, *Step->Binding.CompanionId, bHasDirective ? *Directive.DirectiveId : TEXT("none"), (Now - Step->FirstSentAt) * 1000.0);
+	if (Step->bPlayerCommand)
+	{
+		if (Reply.ReplyText.IsEmpty()) { Reply.ReplyText = bHasDirective ? TEXT("收到。") : TEXT("暂时没有可执行指令。"); }
+		OnReplyReceived.Broadcast(Reply);
+	}
+	CompleteStep(Step);
+}
+
+bool UCompanionChatSubsystem::IsDirectiveCurrent(const FCompanionAgentDirective& Directive) const
+{
+	return bBindingReady && bContextActive && Directive.ContextGeneration == ContextGeneration &&
+		Directive.AgentId == SelectedCompanionId && Directive.RunId == Binding.RunId &&
+		FPlatformTime::Seconds() < Directive.ValidUntilSeconds && IsExplorationActive();
+}
+
+void UCompanionChatSubsystem::CompleteStep(TSharedPtr<FPendingStep> Step)
+{
+	if (ActiveStep == Step) { ActiveStep.Reset(); }
+	if (UncertainStep == Step) { UncertainStep.Reset(); }
+	NextHeartbeatAt = FPlatformTime::Seconds() + HeartbeatInterval;
+	PumpQueue();
+}
+
+void UCompanionChatSubsystem::SendCancellation(const TSharedPtr<FPendingStep>& Step)
+{
+	if (!Step.IsValid() || Step->Binding.RunBindingId.IsEmpty()) { return; }
+	auto Body = CompanionScoped::BuildScopedBody(Step->Binding, NewId());
+	Body->SetStringField(TEXT("target_request_id"), Step->RequestId);
+	Body->SetStringField(TEXT("operation"), TEXT("agent-step"));
+	Body->SetStringField(TEXT("reason_code"), TEXT("USER_CANCELLED"));
+	MakeRequest(TEXT("/requests/cancel"), Body)->ProcessRequest();
+}
+
+void UCompanionChatSubsystem::SendRunEnd()
+{
+	if (Binding.RunBindingId.IsEmpty()) { return; }
+	auto Body = MakeShared<FJsonObject>();
+	Body->SetStringField(TEXT("protocol_version"), TEXT("0.4"));
+	Body->SetStringField(TEXT("request_id"), NewId());
+	Body->SetStringField(TEXT("save_id"), Binding.SaveId);
+	Body->SetStringField(TEXT("service_instance_id"), Binding.ServiceInstanceId);
+	Body->SetStringField(TEXT("run_id"), Binding.RunId);
+	Body->SetStringField(TEXT("run_binding_id"), Binding.RunBindingId);
+	Body->SetNumberField(TEXT("expected_control_revision"), Binding.ControlRevision);
+	MakeRequest(TEXT("/runs/end"), Body)->ProcessRequest();
+}
+
+void UCompanionChatSubsystem::InvalidateSession(bool bEndRun, bool bPreserveRun)
+{
+	if (bInvalidating) { return; }
+	TGuardValue<bool> InvalidationGuard(bInvalidating, true);
+	++ContextGeneration; // Invalidate local callbacks before any remote cancellation.
+	if (ActiveHttpRequest.IsValid())
+	{
+		ActiveHttpRequest->OnProcessRequestComplete().Unbind();
+		ActiveHttpRequest->CancelRequest();
+		ActiveHttpRequest.Reset();
+	}
+	SendCancellation(ActiveStep);
+	SendCancellation(UncertainStep);
+	if (bEndRun) { SendRunEnd(); }
+	ActiveStep.Reset(); UncertainStep.Reset(); PendingSteps.Empty(); AppliedDirectiveIds.Empty();
+	if (!bPreserveRun) { Binding = CompanionScoped::FBinding(); }
+	bBindingReady = false; bConnecting = false; bContextActive = false;
+	if (!bPreserveRun) { SessionWorld.Reset(); SessionPlayer.Reset(); }
+	SessionCompanion.Reset();
+	if (!bPreserveRun) { DesiredRunId.Empty(); }
+	OnConversationReset.Broadcast();
+}
+
+void UCompanionChatSubsystem::FailSession(const FString& Message)
+{
+	const bool bHadPlayerMessage = (ActiveStep.IsValid() && ActiveStep->bPlayerCommand) ||
+		PendingSteps.ContainsByPredicate([](const TSharedPtr<FPendingStep>& Step) { return Step->bPlayerCommand; });
+	InvalidateSession(false);
+	bReconnectRequired = true;
+	ReportFailure(bHadPlayerMessage, Message);
+}
+
+void UCompanionChatSubsystem::ReportFailure(bool bPlayerCommand, const FString& Message)
+{
+	if (bPlayerCommand) { OnRequestFailed.Broadcast(Message); }
 	else if (!bHeartbeatFailureLogged)
 	{
 		UE_LOG(LogAesirWarden, Warning, TEXT("%s"), *Message);
 		bHeartbeatFailureLogged = true;
-	}
-}
-
-void UCompanionChatSubsystem::HandleAgentStepResponse(
-	FHttpRequestPtr,
-	FHttpResponsePtr Response,
-	bool bSucceeded,
-	FString ExpectedRequestId,
-	FString ExpectedSnapshotId,
-	FString ExpectedCompanionId,
-	FString ExpectedScene,
-	TSet<FString> AllowedTargetIds,
-	bool bPlayerCommand,
-	bool bEncounterActive,
-	uint64 RequestSequence,
-	double SentAtSeconds)
-{
-	if (!bPlayerCommand)
-	{
-		bHeartbeatInFlight = false;
-	}
-	if (RequestSequence < LatestPlayerCommandSequence)
-	{
-		return;
-	}
-
-	auto Fail = [this, bPlayerCommand](const FString& Message)
-	{
-		ReportFailure(bPlayerCommand, Message);
-	};
-
-	if (!bSucceeded || !Response.IsValid())
-	{
-		Fail(TEXT("队友 AI 服务没有响应。"));
-		return;
-	}
-	if (!EHttpResponseCodes::IsOk(Response->GetResponseCode()))
-	{
-		Fail(FString::Printf(
-			TEXT("队友 AI 服务 HTTP %d：%s"),
-			Response->GetResponseCode(),
-			*Response->GetContentAsString().Left(256)));
-		return;
-	}
-
-	TSharedPtr<FJsonObject> Root;
-	if (!FJsonSerializer::Deserialize(
-		TJsonReaderFactory<>::Create(Response->GetContentAsString()),
-		Root) || !Root.IsValid())
-	{
-		Fail(TEXT("队友 AI 响应不是有效 JSON。"));
-		return;
-	}
-
-	FString ProtocolVersion;
-	FString RequestId;
-	FString CompanionId;
-	FString Action;
-	const TSharedPtr<FJsonObject>* Observability;
-	FString UsedSnapshotId;
-	if (!Root->TryGetStringField(TEXT("protocol_version"), ProtocolVersion) ||
-		ProtocolVersion != TEXT("0.3") ||
-		!Root->TryGetStringField(TEXT("request_id"), RequestId) ||
-		RequestId != ExpectedRequestId ||
-		!Root->TryGetStringField(TEXT("companion_id"), CompanionId) ||
-		CompanionId != ExpectedCompanionId ||
-		!Root->TryGetStringField(TEXT("action"), Action) ||
-		!Root->TryGetObjectField(TEXT("observability"), Observability) ||
-		!(*Observability)->TryGetStringField(
-			TEXT("used_snapshot_id"), UsedSnapshotId) ||
-		UsedSnapshotId != ExpectedSnapshotId)
-	{
-		Fail(TEXT("队友 AI 响应版本、身份或快照不匹配。"));
-		return;
-	}
-
-	FCompanionChatReply ChatReply;
-	ChatReply.ProtocolVersion = ProtocolVersion;
-	ChatReply.CompanionId = CompanionId;
-	(*Observability)->TryGetStringField(TEXT("source"), ChatReply.Source);
-	Root->TryGetStringField(TEXT("reply_text"), ChatReply.ReplyText);
-
-	const TSharedPtr<FJsonValue> DirectiveValue =
-		Root->TryGetField(TEXT("directive"));
-	if (Action == TEXT("none"))
-	{
-		if (DirectiveValue.IsValid() && DirectiveValue->Type != EJson::Null)
-		{
-			Fail(TEXT("空动作响应意外包含指令。"));
-			return;
-		}
-	}
-	else if (Action == TEXT("directive"))
-	{
-		const TSharedPtr<FJsonObject>* DirectiveObject;
-		if (!Root->TryGetObjectField(TEXT("directive"), DirectiveObject))
-		{
-			Fail(TEXT("队友 AI 响应缺少指令。"));
-			return;
-		}
-
-		FCompanionAgentDirective Directive;
-		double Priority = -1.0;
-		FGuid ParsedDirectiveId;
-		if (!(*DirectiveObject)->TryGetStringField(
-				TEXT("directive_id"), Directive.DirectiveId) ||
-			!FGuid::Parse(Directive.DirectiveId, ParsedDirectiveId) ||
-			!(*DirectiveObject)->TryGetStringField(
-				TEXT("agent_id"), Directive.AgentId) ||
-			Directive.AgentId != ExpectedCompanionId ||
-			!(*DirectiveObject)->TryGetStringField(
-				TEXT("domain"), Directive.Domain) ||
-			Directive.Domain != ExpectedScene ||
-			!(*DirectiveObject)->TryGetStringField(
-				TEXT("action_type"), Directive.ActionType) ||
-			Directive.ActionType.IsEmpty() ||
-			!(*DirectiveObject)->TryGetStringField(
-				TEXT("source"), Directive.Source) ||
-			!(*DirectiveObject)->TryGetNumberField(TEXT("priority"), Priority) ||
-			!FMath::IsFinite(Priority) || Priority < 0.0 || Priority > 100.0)
-		{
-			Fail(TEXT("队友 AI 指令身份、场景或动作不合法。"));
-			return;
-		}
-		Directive.Priority = static_cast<int32>(Priority);
-		(*DirectiveObject)->TryGetStringField(
-			TEXT("policy_revision"), Directive.PolicyRevision);
-
-		const TSharedPtr<FJsonObject>* ExpiresObject;
-		if (!(*DirectiveObject)->TryGetObjectField(
-				TEXT("expires"), ExpiresObject) ||
-			!(*ExpiresObject)->TryGetStringField(
-				TEXT("type"), Directive.ExpiresType))
-		{
-			Fail(TEXT("队友 AI 指令缺少有效期。"));
-			return;
-		}
-		if (Directive.ExpiresType == TEXT("before_seconds"))
-		{
-			double RemainingSeconds = -1.0;
-			if (!(*ExpiresObject)->TryGetNumberField(
-					TEXT("remaining_seconds"), RemainingSeconds) ||
-				!FMath::IsFinite(RemainingSeconds) ||
-				RemainingSeconds <= 0.0 ||
-				FPlatformTime::Seconds() - SentAtSeconds >= RemainingSeconds)
-			{
-				Fail(TEXT("队友 AI 指令已过期。"));
-				return;
-			}
-			Directive.RemainingSeconds = static_cast<float>(
-				RemainingSeconds - (FPlatformTime::Seconds() - SentAtSeconds));
-		}
-		else if (Directive.ExpiresType == TEXT("encounter_end"))
-		{
-			if (!bEncounterActive)
-			{
-				Fail(TEXT("非战斗状态收到了持续到战斗结束的指令。"));
-				return;
-			}
-		}
-		else if (Directive.ExpiresType != TEXT("immediate"))
-		{
-			Fail(TEXT("队友 AI 指令有效期类型未知。"));
-			return;
-		}
-
-		const TSharedPtr<FJsonObject>* PayloadObject;
-		if (!(*DirectiveObject)->TryGetObjectField(TEXT("payload"), PayloadObject))
-		{
-			Fail(TEXT("队友 AI 指令缺少 payload。"));
-			return;
-		}
-		for (const TPair<FString, TSharedPtr<FJsonValue>>& Pair :
-			(*PayloadObject)->Values)
-		{
-			if (!Pair.Value.IsValid() || Pair.Value->Type != EJson::String)
-			{
-				Fail(TEXT("队友 AI 指令 payload 类型不合法。"));
-				return;
-			}
-			Directive.Payload.Add(Pair.Key, Pair.Value->AsString());
-		}
-
-		for (const FString& TargetKey : {
-			FString(TEXT("target_id")), FString(TEXT("object_id"))})
-		{
-			if (const FString* TargetId = Directive.Payload.Find(TargetKey))
-			{
-				if (!TargetId->IsEmpty() && !AllowedTargetIds.Contains(*TargetId))
-				{
-					Fail(TEXT("队友 AI 指令引用了快照外的目标。"));
-					return;
-				}
-				if (TargetKey == TEXT("target_id"))
-				{
-					Directive.TargetId = *TargetId;
-				}
-			}
-		}
-
-		const TSharedPtr<FJsonObject>* PresentationObject;
-		if ((*DirectiveObject)->TryGetObjectField(
-				TEXT("presentation"), PresentationObject))
-		{
-			FString GazeTargetId;
-			if ((*PresentationObject)->TryGetStringField(
-					TEXT("gaze_target_id"), GazeTargetId) &&
-				!GazeTargetId.IsEmpty() &&
-				!AllowedTargetIds.Contains(GazeTargetId))
-			{
-				Fail(TEXT("队友 AI 表现指令引用了快照外的目标。"));
-				return;
-			}
-			(*PresentationObject)->TryGetStringField(
-				TEXT("reply_text"), ChatReply.ReplyText);
-			(*PresentationObject)->TryGetStringField(
-				TEXT("emotion_id"), ChatReply.EmotionId);
-			(*PresentationObject)->TryGetStringField(
-				TEXT("gesture_id"), ChatReply.GestureId);
-			(*PresentationObject)->TryGetStringField(
-				TEXT("facial_expression_id"),
-				ChatReply.FacialExpressionId);
-			(*PresentationObject)->TryGetBoolField(
-				TEXT("interruptible"), ChatReply.bInterruptible);
-		}
-		OnDirectiveReceived.Broadcast(Directive);
-	}
-	else
-	{
-		Fail(TEXT("队友 AI 响应动作类型未知。"));
-		return;
-	}
-
-	bHeartbeatFailureLogged = false;
-	if (bPlayerCommand || Action == TEXT("directive"))
-	{
-		TArray<FString> ReasonCodes;
-		(*Observability)->TryGetStringArrayField(TEXT("reason_codes"), ReasonCodes);
-		UE_LOG(LogAesirWarden, Display,
-			TEXT("Companion agent step: companion=%s scene=%s action=%s reasons=%s request=%s"),
-			*CompanionId, *ExpectedScene, *Action,
-			*FString::Join(ReasonCodes, TEXT(",")), *RequestId);
-	}
-	if (bPlayerCommand)
-	{
-		if (ChatReply.ReplyText.IsEmpty())
-		{
-			ChatReply.ReplyText = Action == TEXT("directive")
-				? TEXT("收到。") : TEXT("暂时没有可执行指令。");
-		}
-		OnReplyReceived.Broadcast(ChatReply);
 	}
 }
