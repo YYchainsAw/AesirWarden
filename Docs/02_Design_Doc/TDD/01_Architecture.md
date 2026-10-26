@@ -1,6 +1,6 @@
 # 技术架构
 
-> 状态：当前源码结构核对 + 未验收的目标链路 · 2026-09-29
+> 状态：2026-10-21采纳Boss本地/远程NPC目标架构；源码仍主要采用本机HTTP联调，部署及完整链路未验收。
 
 ## 运行边界
 
@@ -11,6 +11,10 @@
 交互预览：[Boss共享执行时序（历史技术参考）](../../UML/Technical/06_BossDecisionSequence.png)。当前需求故障语义见[Boss回退分析时序](../../UML/png/09_BossFallbackSequence.drawio.png)，对象职责见[课程对象分析](../../09_Course_Analysis/01_RetryObjectAnalysis.md)。
 
 UE 负责目标、状态、能力合法性与伤害结算。Python Boss 服务返回高层动作建议，同伴服务负责聊天与命令建议；实际战斗都由 UE 执行。依赖见 [Build.cs](../../../Source/AesirWarden/AesirWarden.Build.cs)，连接配置见[工程速查](../../05_Development_Guide/01_ProjectQuickReference.md)，协议和动作见[Boss RL 契约](../../08_RL_Research/01_BossRLContract.md)。
+
+正式目标为Boss冻结推理与队友实时控制在玩家本机，NPC语言理解、对话、检索及高层建议在远程HTTPS服务。服务端按认证玩家/存档隔离长期记忆和关系，UE缓存并同步真实事实；多个独立单机客户端不构成多人联机世界。录音/播放留本地，NPC服务转接外部ASR；训练与在线服务分开调度。完整位置表、模型分发和断网行为见[AI部署与离线行为](06_Deployment.md)，取舍见[ADR-003](Decisions/03_ADR003SplitAIDeployment.md)。
+
+EVO-20261021已采纳的[NPC交互与服务演进](07_NPCInteractionEvolution.md)进一步规定轮次/取消、上下文来源、语音输入输出生命周期、事件治理、真实回执、记忆来源及持久幂等。复用现有SSE/人格/记忆/仲裁；VAD、TTS和按回复打断为后置扩展，生成、播放与动作完成分别记录。目标模型已通过MCP与Desktop同步；代码/协议和运行验收仍按两仓实际记录，UE/GAS最终执行与Boss冻结推理边界保持。
 
 ## 模块职责
 
@@ -27,4 +31,6 @@ UE 负责目标、状态、能力合法性与伤害结算。Python Boss 服务�
 - Observation、Action 的版本、顺序和值由 [RL 契约](../../08_RL_Research/01_BossRLContract.md)维护；修改时同步两端并检查模型是否需要重训。
 - BT 与 PPO 共享 GAS 执行、能力配置、遭遇规则和遥测口径；模拟器 `RuleBossPolicy` 不能当 UE BT。
 - 一次服务错误、连续失败、超时、错误 Schema 与非法动作必须可区分记录；当前回退代码仍有待修复问题，见[KnownIssues](../../06_Test_Doc/02_KnownIssues.md)。
+- 本地战斗和菜单不等待远程服务；云端仅给可校验建议。当前本机默认地址是实现现状，不代表已完成远程配置、多人隔离或模型随包交付。
+- Technical历史组件图保留本机联调范围；DEP/EVO目标已更新到A01/A04/A06/A10及新增[A11部署](../../UML/png/11_AIDeployment.drawio.png)、[A12输入/语音生命周期](../../UML/src/12_NPCVoiceLifecycle.drawio)。图形表达目标职责，运行结果仍按验证矩阵，不把历史图或目标图当部署证据。
 - 图预览集中在 [UML](../../UML/)，正文保存职责与边界；工程和实验的当前状态以实际验证记录为准。

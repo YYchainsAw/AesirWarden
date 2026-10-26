@@ -1,8 +1,8 @@
-# 本机服务与跨端约定
+# AI服务与跨端约定
 
-> 2026-10-18交界文档修订；目标需求、现有协议和实际验收分开。DEC-03保留能力条件约束，技能数量待定；阶段回执为目标，性能/数据保留未定值不以实现授权代替业务确认。
+> 2026-10-23对齐服务main的v0.4/SQL/Bearer能力；保留2026-10-18交界规则及UE现有legacy差异。双仓提交、升级步骤和真实支持边界见[scoped交接](08_NPCScopedHandoff.md)。技能数量及真实阶段回执仍按原边界维护。
 
-UE是单机游戏执行端，通过本机HTTP使用Boss和NPC服务；本项目不据此引入多人联机。NPC外部LLM是服务的可选出站依赖，“HTTP监听回环地址”不等于无数据外发。配置入口见[工程速查](../../05_Development_Guide/01_ProjectQuickReference.md)。
+UE是单机游戏执行端。正式目标为Boss本地推理、NPC远程HTTPS服务；NPC服务调用外部LLM/ASR，多个独立玩家的数据按认证主体与存档隔离，不引入多人联机战斗。当前源码仍以本机HTTP联调为主，下表描述实现现状。目标位置、缓存同步、断网与模型分发见[部署说明](06_Deployment.md)和[ADR-003](Decisions/03_ADR003SplitAIDeployment.md)，配置入口见[工程速查](../../05_Development_Guide/01_ProjectQuickReference.md)。
 
 ## 协议与版本来源
 
@@ -10,12 +10,15 @@ UE是单机游戏执行端，通过本机HTTP使用Boss和NPC服务；本项目�
 | --- | --- | --- |
 | Boss冻结策略 | `127.0.0.1:8012/v1/boss/policy/decide`，协议1.0、Schema4 | 规则见[RL契约](../../08_RL_Research/01_BossRLContract.md)；完整UE运行待验 |
 | NPC统一心跳/文本建议 | UE默认 `127.0.0.1:8011/v1/agent/step`，协议0.3 | 已有请求/解析及限定探索follow/wait，完整动作执行按M5接通 |
+| NPC作用域文本/控制/持久恢复 | 服务 `/v1/scoped/`，协议0.4，SQL/Bearer可选配置 | 服务DEP2/3/4能力已合入；UE未接。端点、绑定/epoch、认证和支持限制见[scoped交接](08_NPCScopedHandoff.md) |
 | NPC旧战术/语音 | `/v1/commands/parse`、`/v1/tactical/resolve`、`/v1/voice/command` | 分别存在0.1/0.2旧契约，不能用统一0.3字段假定兼容 |
 | 事件 / 回执 / 调试 | `/v1/world/events`、`/v1/tactical/executions`、`/v1/console/state`、`/memory`、`POST /memory/reset` | Python接口存在，游戏侧上报、生命周期与实际回执需独立验证 |
 
-服务资料基线为Python仓库 `78c7c246ebe55d5ea3ec260a9c65cb11f950b4e9` 的[NPC SDD v1.1](https://github.com/YYchainsAw/aesir-ai-service/blob/78c7c246ebe55d5ea3ec260a9c65cb11f950b4e9/docs/planning/aesir-agent-sdd-v1.1.md)及对应schema/路由。该版本是本页的参考输入，不表示另一仓库已接受本页新增目标。其默认服务端口8000与UE默认8011不同，部署时统一实际配置并记录。
+2026-10-18交界规则的历史输入为Python仓库 `78c7c246ebe55d5ea3ec260a9c65cb11f950b4e9` 的[NPC SDD v1.1](https://github.com/YYchainsAw/aesir-ai-service/blob/78c7c246ebe55d5ea3ec260a9c65cb11f950b4e9/docs/planning/aesir-agent-sdd-v1.1.md)及schema/路由，保留当时端口8000差异。服务默认8011，Boss独立8012。2026-10-23核对服务`main@b641b2f`已有`docs/guides/deployment.md`及AT-DEP定义；鉴权/存档/同步采用独立v0.4契约，不能把新字段追加到0.1/0.2/0.3请求便宣称兼容。两仓仍按[15项能力分配](06_Deployment.md)的`placement-v1`对照，最新固定资料入口见[scoped交接](08_NPCScopedHandoff.md)。
 
 ## 稳定规则
+
+EVO-20261021已采纳的20项增量及NPC-UC01～07步骤扩展集中在[NPC交互与服务演进](07_NPCInteractionEvolution.md)。该页细化轮次/取消、语音、事件、记忆和持久一致性，不把目标概念直接加入当前协议字段表；原BR-NPC和以下现有实现差异继续适用。VAD/TTS/打断为后置扩展，不能以原语音输入用例或已有SSE认定已完成。验收入口为NPC-EVO-01～06。
 
 | ID | UE与服务交界的可判定约束 | 对应需求 / 边界 |
 | --- | --- | --- |
@@ -25,6 +28,8 @@ UE是单机游戏执行端，通过本机HTTP使用Boss和NPC服务；本项目�
 | BR-NPC-04 | `POST /v1/console/memory/reset`仅清指定角色会话和持久记忆，保留人格与关系；会话清理后持久清理失败时返回失败，可能部分完成，不承诺回滚 | NPC-FR07；与“全量删除/重建角色”区分，当前不新增游戏内重置按钮 |
 | BR-NPC-05 | 自主行为只响应游戏主动提交的快照/心跳；根据场景、打断、频率、重复抑制与优先级返回一个建议或无动作。过期快照、旧游玩和结束遭遇的指令不得执行 | NPC-FR04；G-UC-06；现有策略参数见下表 |
 | BR-NPC-06 | 外部LLM可接收的角色/玩家文本、检索记忆、会话及查证结果必须在部署说明中列明，记录后端与保留范围；密钥不进入对话、实验附件或公开记录 | NPC-FR01/06；现有数据流可查，新增外发许可/脱敏/保留要求待实际决定 |
+| BR-NPC-07 | 远程调用先验证玩家及存档归属，记忆/关系/会话/限流/去重/回执均绑定同一作用域；重连按权威版本、幂等确认和重置屏障同步。旧无作用域接口不得直接公网开放 | ADR-003；AI-DEP-10/11、DEP-UE-04/06；服务v0.4及SQL/Bearer已实现相应基础，UE及生产接入待验 |
+| BR-NPC-08 | 服务解析的条件指令由UE在当前遭遇本地触发与校验。离线保持本地基础AI，恢复不重放过期命令；ASR故障保留文本入口 | ADR-003；AI-DEP-07/13、DEP-UE-02/03；Python六步方案第三步，完整执行仍待验 |
 
 ## 非功能约束
 
@@ -33,7 +38,8 @@ UE是单机游戏执行端，通过本机HTTP使用Boss和NPC服务；本项目�
 | NFR-GAME-01 | 网络请求不阻塞菜单、终局、重试、返回与退出；断连、超时和迟到响应下运行相同流程，已结束游玩不被修改 | 需求目标，运行未验 |
 | NFR-GAME-02 | 记录目标Windows机器、构建、画质和样本，测量平均/1% low/极端帧率与帧时间；30FPS为当前项目目标 | 最低硬件和正式判据待定，不写“已达标” |
 | NFR-NPC-01 | 既有规格目标为战斗指令端到端P95<3秒、自主判定P95<1秒、规则路径P95<100毫秒；区分规则/LLM/降级、无产出与有产出及请求量 | 目标来自服务规格；时钟边界、硬件、样本与真实结果在验收前确定 |
-| NFR-NPC-02 | 测试角色/游戏交叉请求、存储分区及允许外发字段；未知角色拒绝，不静默回退默认角色；敏感配置和密钥不出现在返回或日志交付中 | 数据隔离目标；外发范围与保留设置按BR-NPC-06逐项记录 |
+| NFR-NPC-02 | 测试玩家/存档/角色/游戏交叉请求、存储分区及允许外发字段；未知角色拒绝，不静默回退默认角色；敏感配置和密钥不出现在返回或日志交付中 | 服务v0.4作用域/Bearer已有受控证据，UE跨归属运行待验；开发固定身份不能代替正式认证 |
+| NFR-NPC-03 | 区分本机与远程、服务处理与端到端耗时，分别记录LLM/ASR/规则路径、超时、并发和费用；在线服务与训练分开调度 | 现有本机P95/HTTP样例不是远程达标证据；验收见部署说明 |
 
 ## 上下文、有效期和重试隔离
 
@@ -50,9 +56,11 @@ UE是单机游戏执行端，通过本机HTTP使用Boss和NPC服务；本项目�
 
 ## 幂等与回执的当前差异
 
-Python `event_policy.py` 使用(companion_id, encounter_id或空串, event_id)的锁保护内存缓存，最多1024项；服务重启或淘汰后不保证回放。重复响应可能仍携带同一companion_action，UE必须据稳定ID去重；不要在重试时给同一事实随意生成新event_id。
+本节区分UE仍在使用的legacy路径与scoped SQL后端。v0.4具有请求/事件身份及最小回执账本，SQL模式将相关业务状态和确认同事务提交；重启后旧业务绑定失效，只从恢复接口读取历史确认，不重放旧动作。JSON/内存模式仍有进程内保留限制，详见[scoped交接](08_NPCScopedHandoff.md)。
 
-当前回执schema的结果为 `accepted/executed/rejected/expired/cancelled`，关联 `order_id, encounter_id, request_id`；接口202只表示记录受理。目标“接收/开始/命中或完成”的分阶段模型尚未由这些枚举完整表达，directive_id到order_id映射、终态与乱序处理按DEC-03保留的阶段目标与服务协作对齐。本轮未修改Python协议或宣称UE已上报完整回执。
+legacy `event_policy.py` 使用(companion_id, encounter_id或空串, event_id)的锁保护内存缓存，最多1024项；服务重启或淘汰后不保证回放。重复响应可能仍携带同一companion_action，UE必须据稳定ID去重；不要在重试时给同一事实随意生成新event_id。
+
+legacy与v0.4回执结果均为 `accepted/executed/rejected/expired/cancelled`，关联 `order_id, encounter_id, request_id`；接口202只表示记录受理。v0.4以directive_id作为receipt.order_id，已有终态防倒退、重复及冲突处理。目标“接收/开始/命中或完成”的完整阶段模型仍未由这些枚举表达，executed仅表示UE自报执行，不推断命中或动画完成；UE真实阶段回执仍待接入。
 
 记忆清理与角色整体删除不是同一个操作。服务SDD正文“失败原状态不变”与memory/reset的部分失败行为需对齐，末尾已记录待校对；角色—关系组合不因仅清记忆而自动无效。类模型应说明拥有者、生命周期及操作作用域。
 
@@ -61,7 +69,7 @@ Python `event_policy.py` 使用(companion_id, encounter_id或空串, event_id)�
 | 参数来源 | 当前声明 | 使用边界 |
 | --- | --- | --- |
 | 关系规则 | 范围0–100、初始20；疏远0–24、中立25–49、友好50–74、亲近75–100 | 沿用服务规则，记忆清理不恢复关系初值 |
-| 防刷 | 同类事实事件60秒、对话信号300秒冷却；每日正向净增上限15 | 记录策略/配置版本；重复事件还须经过幂等，不能只靠冷却 |
+| 防刷 | 当前服务默认同类事实事件60秒、对话信号120秒冷却；每日正向净增上限15 | 2026-10-21按Python `e4e20f7` 的 `app/config.py` 核对；旧300秒为历史默认。运行记录实际加载配置；重复事件还须经过幂等，不能只靠冷却 |
 | 心跳与自主节流 | 心跳最小2秒；同触发300秒重复抑制、窗口最多3次 | 不等同于响应耗时；进程内节流保留范围按实际实现说明 |
 | 优先级 / 打断 | 危险→战斗→玩家→剧情→关系→日常；过场/讲话/施法/弹窗按规则抑制 | 按当前agency policy核对，不能由UE是否执行反推服务已正确仲裁 |
 | LLM熔断 | 默认连续失败5次、恢复窗口60秒 | NPC服务配置，与Boss三次失败回退区分 |

@@ -4,6 +4,18 @@
 
 来源与确认状态见[课程基线](README.md)，完整需求与修订后的详细用例见[Word修订稿](Word/AesirWarden需求分析文档.docx)。本页保存映射与验收意图，不复制完整需求书、任务状态或测试操作脚本。具体操作和实际结果归[开发检查清单](../06_Test_Doc/01_VerificationMatrix.md)，正式实验条件归[评估方案](../08_RL_Research/03_EvaluationProtocol.md)。
 
+2026-10-21部署扩展单列`DEP-20261021`，不重编号以下23FR/18UC。正式位置与离线规则见[部署说明](../02_Design_Doc/TDD/06_Deployment.md)，目标来源见[ADR-003](../02_Design_Doc/TDD/Decisions/03_ADR003SplitAIDeployment.md)；原Word/UML未因Markdown修改自动回填。
+
+| 扩展范围 | 既有职责关联 | 验收入口 |
+| --- | --- | --- |
+| 本地Boss与模型随包/更新 | RL-FR01/02/04/06、R-UC-01/02；共享GAS与冻结模型 | DEP-UE-01/05；AI-DEP-01/02/14/15；Python方案第五/六步 |
+| 远程NPC、玩家/存档身份与ASR | NPC-FR01～09、NPC-UC01～07；UE实时执行边界保持 | DEP-UE-02/03/04；AI-DEP-03～13；Python方案第二/三/四步 |
+| 缓存同步、重连、记忆重置与运维 | 游戏重试/旧响应隔离、NPC记忆/关系及回执 | DEP-UE-04/06；AI-DEP-09/10/15；Python方案第四/六步 |
+
+以上均未执行。AI-DEP编号来自[部署正文](../02_Design_Doc/TDD/06_Deployment.md)的两仓能力对照；服务侧方案位置也在该页列明，不再引用服务器仓库中没有来源的AT-DEP编号。新增身份、外部ASR协作和同步字段仍须落实到后端需求/契约，旧图形覆盖边界见UML索引。
+
+2026-10-21用户继续采纳NPC对话编排、实时语音、游戏Agent、记忆与云端服务演进，规则与20项计划见[NPC交互演进](../02_Design_Doc/TDD/07_NPCInteractionEvolution.md)。`D1～D4/V1～V4/G1～G4/M1～M4/C1～C4`为两仓学习项编号，不是新增FR/UC；以下原23FR/18UC保持编号和课程快照范围。新目标的验收单列`NPC-EVO-01～06`，不将旧用例覆盖关联视为新增流式取消、TTS/VAD、持久幂等或云端同步已经实现。
+
 ## 读表规则
 
 - `UC/步骤`指[Word修订稿](Word/AesirWarden需求分析文档.docx)第6章分步表，不再按外部原件或旧提取的步骤数读取。G-UC-05统一为3步；R-UC-02细化为部署1、请求2、完整响应校验3、共享执行4、持续/BT段5、终局失效6。G-UC-06同时对应[本轮详规](01_RetryObjectAnalysis.md#g-uc-06)，其成功出口在恢复可操作状态结束，后续探索和入场分别回到G-UC-02/03。
@@ -46,11 +58,25 @@
 | NPC-FR02 文本意图到授权行为建议；SRC-01、SRC-07 | NPC-UC02/1～3 | A06 `Directive/AbilitySpec`、有身份的执行记录；A10；BR-NPC-01/03 | +授权能力合法建议；−无技能日常建议不被强制要技能、未授权/模糊/无效目标拒绝或澄清：NPC-COMMAND-01 | 待测；能力数量DEC-03 |
 | NPC-FR03 语音进入同一指令流程；SRC-01、SRC-07 | NPC-UC03/1～3 | A04语音入口；A10复用文本校验/执行；BR-NPC-01/06 | +有效语音转文本后走同一校验；−格式/识别/外部服务失败不执行并保留文本入口：NPC-VOICE-01 | 待测；语音格式与外发DEC-05 |
 | NPC-FR04 心跳自主建议与抑制；SRC-01 §5.7、SRC-07 | NPC-UC04/1～3 | A06 `DirectiveExecution`的快照上下文值与`Directive`；A10；BR-NPC-01/05 | +允许场景返回一个建议或无动作；−过场/讲话/施法/弹窗、过期或重复快照不刷行为：NPC-AUTO-01 | 待测；实际执行/回执DEC-03 |
-| NPC-FR05 事件驱动关系/记忆，重复幂等；SRC-01、SRC-07 | NPC-UC05/1～3 | A06 `MemoryContext.eventFacts/eventDedupKeys`与`CompanionIdentity.relationshipState`；`DirectiveExecution`的作用域和`directiveId`关联执行去重；BR-NPC-01/02 | +可信事件按规则更新；−重复ID沿用首次结果，未授权/存储失败明确响应：NPC-EVENT-01 | 待测；不把世界事件重复当新贡献 |
+| NPC-FR05 事件驱动关系/记忆，重复幂等；SRC-01、SRC-07 | NPC-UC05/1～3 | A06 `MemoryContext.facts`的来源/确认与`CompanionIdentity.relationshipState`；`DirectiveExecution`的作用域和`directiveId`关联执行去重；持久事件幂等按C2、服务模型与BR-NPC-01/02，不虚构图内独立去重属性 | +可信事件按规则更新；−重复ID沿用首次结果，未授权/存储失败明确响应：NPC-EVENT-01 | 待测；不把世界事件重复当新贡献 |
 | NPC-FR06 指定角色查询与解释；SRC-01、SRC-07 | NPC-UC06/1～2及不存在分支 | A04调试人员通路；A06人格、关系、记忆与指令记录；BR-NPC-01/06 | +按角色查状态和指定决策来源；−未知角色/请求有明确错误、不暴露密钥：NPC-QUERY-01、NPC-SCOPE-01 | 待测；SRC-07已有调试端点，部署可达性/指定历史请求解释仍须核验 |
 | NPC-FR07 指定记忆清理、保留人格与关系；SRC-01、SRC-07 | NPC-UC07/1～2及持久清理失败 | A06人格/记忆生命周期；BR-NPC-04 | +目标角色清理，关系和其他角色不变；−持久清理失败返回失败，不声称事务回滚：NPC-RESET-01 | 待测；不新增游戏内重置按钮 |
 | NPC-FR08 游戏/角色/事件/能力隔离；SRC-01、SRC-07 | NPC-UC01～07的入口校验与拒绝分支 | A06 `CompanionIdentity/GameCapabilityProfile`与`AbilitySpec`作用域；A04/A10；BR-NPC-01、NFR-NPC-02 | +当前游戏已注册角色；−跨游戏/未知身份、未授权事件/能力均拒绝且不落默认角色：NPC-SCOPE-01 | 待测；真实配置与外发DEC-05 |
 | NPC-FR09 建议与实际阶段/终态回执关联；SRC-01、SRC-07 | NPC-UC02/3、NPC-UC04/3、NPC-UC05/3 | A06 `DirectiveExecution/ExecutionReceipt`；A10；BR-NPC-03 | +反馈关联原指令及真实阶段；−重复/乱序/过期/旧局回执不制造已完成：NPC-RECEIPT-01 | 待联调；阶段与终态DEC-03 |
+
+## NPC交互演进扩展追踪
+
+本表只说明既有用例的关联与新增流，不重写完整用例。Python权威计划为其仓库`docs/planning/npc-interaction-evolution.md`；Python演进验收`AT-EVO-*`与下列UE验收按场景交叉核对，不按编号相同推断覆盖。完整操作、判据与运行结果在[检查清单](../06_Test_Doc/01_VerificationMatrix.md#npc交互演进)维护。
+
+| 采纳项 | 既有FR/UC及规则关联 | 本次扩展与覆盖边界 | UE验收 / 部署对应 |
+| --- | --- | --- | --- |
+| 对话编排 D1～D4 | NPC-FR01/02/06/09；NPC-UC01/02/06，关联G-UC-06；BR-GAME-04、BR-NPC-03/05/06 | 在已有SSE、会话与查证工具上补轮次身份/终态、排队与取消、上下文来源/有效期、工具与重试预算；半回复不当完整承诺。生成、播放和动作完成分别记录 | NPC-EVO-01；关联NPC-CHAT-01/QUERY-01/METRICS-01、DEP-UE-02/04；AI-DEP-06/08/11/15 |
+| 实时语音 V1～V4 | NPC-FR03、NPC-UC03的语音输入；后续回复呈现关联NPC-FR01、NPC-UC01；BR-NPC-01/06/08 | 先接按键录音/外部ASR与最终转写；临时文本不执行动作。VAD/回声处理、TTS有序播放与整链打断为已采纳的后置扩展流，原语音输入用例不代表其已覆盖或实现 | NPC-EVO-02/03；关联NPC-VOICE-01、DEP-UE-02；AI-DEP-08/12/13 |
+| 游戏Agent G1～G4 | NPC-FR02/04/05/09；NPC-UC02/04/05；BR-NPC-01/02/03/05/08 | 沿用UE即时执行与Python高层建议，补事件合并/过期淘汰、稳定命令身份和真实结果闭环；条件由UE当前遭遇触发，优先级不绕过GAS及不可打断窗口。Boss本地PPO及原动作契约保持独立 | NPC-EVO-04；关联NPC-COMMAND-01/AUTO-01/EVENT-01/RECEIPT-01、DEP-UE-03；AI-DEP-03～07/11 |
+| 记忆 M1～M4 | NPC-FR01/05/07/08；NPC-UC01/05/07；BR-NPC-02/04/07 | 保留分层记忆与关系规则，试验索引按需读取，补来源证据、纠错与相应范围的重置屏障；模型输出不能替代UE真实事实。原reset部分失败语义不被拟议事务覆盖，清记忆仍保留人格/关系 | NPC-EVO-05；关联NPC-CHAT-01/EVENT-01/RESET-01、DEP-UE-04/06；AI-DEP-09/10 |
+| 云端服务 C1～C4 | NPC-FR05/06/08/09及NPC-UC01～07入口；BR-NPC-02/03/07、NFR-NPC-02/03 | 在既有部署目标上细化认证作用域、持久幂等/事务确认、离线事实与游标补拉、取消传播和分段追踪；玩家自报ID不构成认证，通知成功不等于持久成功。游戏存档分支和重置屏障须两仓自定义契约 | NPC-EVO-06；关联NPC-SCOPE-01/RECEIPT-01/DATA-01/METRICS-01、DEP-UE-02/04/06；AI-DEP-10/13/15 |
+
+上述验收均未执行。旧请求不得写入当前或新作用域；已确认旧局事实可按原归属归档，重试不自动清空长期记忆/关系。2026-10-21后续已通过MCP同步A01/A04/A06/A10，新增A11部署及A12a/b输入/播放时序，并由Desktop导出；Python记忆重置/执行模型同步目标职责。D/V项关联A12，G项关联A06/A10，M项关联A06及Python12/14，C项关联A11及两端身份/执行模型。Word回填版本及检查见[建模记录](03_AIModelingEvidence.md)，图源/预览见[UML索引](../UML/README.md)；模型完成不改变这些运行检查的未执行状态。
 
 ## NFR：质量要求的稳定编号
 
@@ -85,7 +111,7 @@
 | BR-RL-04 冻结模型与兼容版本；同上、[训练来源](../08_RL_Research/02_TrainingHistory.md) | R-UC-01/3、02/1；A07模型/部署/选模 | +已选模型兼容并冻结；−缺来源/不兼容不标可部署：RL-MODEL-01、RL-CONTRACT-01；待核查 |
 | BR-RL-05 样本隔离与环境分报；[评估方案](../08_RL_Research/03_EvaluationProtocol.md) | R-UC-01/2、03/1～3；A07 `EvaluationRun/PolicySelection`及策略段 | +独测与选模分离，回退独立归组；−900局选模不作独测、回退局不混纯PPO、模拟器不代替UE：RL-COMPARE-01、RL-METRICS-01；待正式采集 |
 | BR-NPC-01 角色/能力作用域；[服务交界](../02_Design_Doc/TDD/05_NetworkNote.md) | NPC-UC01～07入口，02/1～3；A06归属/能力引用，A10 | +有技能建议授权、日常可无技能；−跨游戏/默认角色回退/未授权拒绝：NPC-SCOPE-01、NPC-COMMAND-01；待测，DEC-03 |
-| BR-NPC-02 事件幂等；同上 | NPC-UC05/1～3；A06事件/关系更新及去重记录 | +首次事件作用一次；−重复ID不重复加关系/发相同反应：NPC-EVENT-01；待测 |
+| BR-NPC-02 事件幂等；同上 | NPC-UC05/1～3；A06事实来源/确认与关系状态；事件幂等见C2及服务模型 | +首次事件作用一次；−重复ID不重复加关系/发相同反应：NPC-EVENT-01；待测 |
 | BR-NPC-03 回执阶段；同上 | NPC-UC02/3、04/3、05/3；A06指令记录/回执，A10 | +原指令关联真实阶段；−Accepted不等于完成，重复/乱序不制造终态：NPC-RECEIPT-01；待测，DEC-03 |
 | BR-NPC-04 指定记忆重置；同上 | NPC-UC07/1～2；A06人格、关系与记忆生命周期 | +清理目标记忆保留人格/关系；−持久失败返回失败、其他角色不变：NPC-RESET-01；待测 |
 | BR-NPC-05 被动快照与抑制；同上 | NPC-UC04/1～3；A06快照与候选建议 | +心跳返回建议/无动作；−无心跳不主动推送，过场/重复/过期不刷行为：NPC-AUTO-01；待测 |

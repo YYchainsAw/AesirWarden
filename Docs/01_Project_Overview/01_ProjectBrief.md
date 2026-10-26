@@ -15,7 +15,7 @@
 ## 技术与个人工作
 
 - Unreal Engine 5.8、C++、Blueprint、Gameplay Ability System、Behavior Tree、Enhanced Input、Motion Warping；工程模块为 `AesirWarden`，依据 [uproject](../../AesirWarden.uproject) 与 [Build.cs](../../Source/AesirWarden/AesirWarden.Build.cs)。
-- Boss 推理接口与同伴命令接口使用独立本机 Python 服务，连接位置见[工程速查](../05_Development_Guide/01_ProjectQuickReference.md)。
+- 当前Boss与NPC通过独立本机Python服务联调；2026-10-21采纳Boss本地推理、远程NPC服务、玩家/存档隔离及缓存同步的正式目标，连接现状见[工程速查](../05_Development_Guide/01_ProjectQuickReference.md)，交付和断网规则见[部署说明](../02_Design_Doc/TDD/06_Deployment.md)。
 - 个人贡献应以可核验的 C++/Blueprint、AI 架构、动画整合、镜头交互、实验配置和结果为准；外部资产来源单独列明。
 
 UE 部分由本人独立开发；Python Boss RL 也由本人负责，Python NPC 服务由队友负责。接口协作仍需保留，文档主要供自己开发回查、服务联调及答辩/作品集展示使用。

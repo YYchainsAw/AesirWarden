@@ -8,6 +8,9 @@
 | 查游戏流程和玩法规则 | [第一关流程](02_Design_Doc/GDD/01_GameFlow.md) · [战斗](02_Design_Doc/GDD/03_CombatDesign.md) · [Boss](02_Design_Doc/GDD/04_EnemyDesign.md) · [技能与成长草案](02_Design_Doc/GDD/05_MagicSystem.md) |
 | 给蓝图和场景接线 | [流程控制器接入](05_Development_Guide/05_LevelFlowGuide.md) · [技术架构](02_Design_Doc/TDD/01_Architecture.md) · [GAS](02_Design_Doc/TDD/02_GasArchitecture.md) |
 | 启动、编译、改配置或恢复工程 | [工程速查](05_Development_Guide/01_ProjectQuickReference.md) |
+| 逐项对照15项AI能力的位置、已有计划、同步与断网边界 | [AI部署与离线行为](02_Design_Doc/TDD/06_Deployment.md) · [ADR-003](02_Design_Doc/TDD/Decisions/03_ADR003SplitAIDeployment.md) |
+| 接入已采纳的对话编排、实时语音、游戏Agent、记忆和云端演进 | [NPC交互与服务演进](02_Design_Doc/TDD/07_NPCInteractionEvolution.md)，20项职责、用例扩展与交付依赖 |
+| 按服务已实现能力升级UE，并验证文本动作与断网恢复 | [NPC v0.4跨仓接入基线](02_Design_Doc/TDD/08_NPCScopedHandoff.md)，锁定两仓提交、Bearer/绑定/epoch、支持边界和UE验收切片 |
 | 查 Bug 或检查改动有没有影响旧功能 | [已知问题](06_Test_Doc/02_KnownIssues.md) · [日常检查表](06_Test_Doc/01_VerificationMatrix.md) · [打包检查](07_Release/01_ReleaseChecklist.md) |
 | 验证 DarkRuins 地图的性能与分区加载 | [完整测试流程与控制台命令](06_Test_Doc/03_DarkRuinsPerformanceTest.md) · [实测结果、迁移与优化交接](06_Test_Doc/04_DarkRuinsPerformanceAndMigrationHandoff.md) |
 | 接入 RL Boss 或做对照实验 | [Boss RL 入口](08_RL_Research/README.md) |
@@ -17,11 +20,11 @@
 
 - [项目简介](01_Project_Overview/01_ProjectBrief.md)和[范围](01_Project_Overview/02_GoalsAndScope.md)：介绍项目及已经确定的目标。
 - [个人开发约定](03_Code_Standard/01_ProjectConventions.md)：命名、蓝图组织和日志等速查。
-- [UML 源与预览](UML/README.md)：10个课程主题、10份draw.io源、14页Desktop导出图和技术参考。
+- [UML 源与预览](UML/README.md)：12份draw.io源、17页Desktop导出图，含新增部署及对话/语音生命周期；Technical保留历史参考。
 - [素材与贡献来源](01_Project_Overview/05_CreditsAndProvenance.md)：素材归属和展示署名。
 - [本轮建模证据](09_Course_Analysis/03_AIModelingEvidence.md)：真实输入、AI预审与修订，人工审查和运行验收分别登记。
 
-Word位于Docs内的修订副本已按本轮基线回填，外部原件保留；[建模与修订记录中的排版核对](09_Course_Analysis/03_AIModelingEvidence.md)已完成。成员最终语义接受及UE/服务/实验运行验收仍需分别记录。
+Word位于Docs内的修订副本沿用COURSE-20261018-R1，已按2026-10-21的DEP/EVO扩展更新为版本1.2，共80页；外部原件保留。NPC原图与新增部署/语音图已由MCP保存、Desktop导出，Word回填范围及实际分页检查见[建模记录](09_Course_Analysis/03_AIModelingEvidence.md)。成员最终语义接受及UE/服务/实验运行验收仍需分别记录。
 
 ## 怎么维护
 
