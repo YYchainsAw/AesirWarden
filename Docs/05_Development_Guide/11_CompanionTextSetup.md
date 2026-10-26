@@ -185,3 +185,9 @@ UE 开发分支 `codex/companion-issue-19`，main 基线 `17a8fef`。本轮实�
 | 资源与本地改动 | 最终 Main 日志无 `LoadErrors`；Main 地图、营火外部 Actor 及用户 PlayerController 蓝图的 SHA256 与修复前一致。备份和清单在完整工程 `Saved/Companion/MenuRestoreBackup-a623a8fe531147788c1e78a75581e81c/` |
 
 真实菜单截图为完整工程 `Saved/StartMenu/MainMenu.png`，起身和探索截图为同目录 `MainStandingUp.png`、`MainStarted.png`。此复验确认菜单恢复和两功能线兼容，不替代 #19 的真实导航跟随、输入操作和远端联调验收。
+
+### PR 分支与本地素材
+
+审核拆分为 `codex/campfire-start-menu` → `main`、`codex/companion-text-integration` → `codex/campfire-start-menu`。后者的代码、配置和上述验证文档从本地已验证的集成快照整理，保留同一实现；菜单 PR 合入后将队友 PR 的基分支改为 main。`codex/companion-issue-19` 与完整工程的 `codex/companion-issue-19-playtest` 保留本地验证快照。
+
+本地 `c8421bf` 曾将六个 Emberhold 导入纹理及原始文件纳入快照；PR 发布分支按既有 `SourceArt/UI/Emberhold/SOURCE_AND_LICENSE.md` 和 `.gitignore` 约定排除这些第三方素材，保留来源记录与导入流程。本地工程仍保留已恢复的纹理，所以本页 Main 实测结果对应完整工程。其他机器从 PR 克隆后，需先按该导入指南恢复第三方素材和本地地图，不能把未恢复素材的公开检出当作同一测试环境。
