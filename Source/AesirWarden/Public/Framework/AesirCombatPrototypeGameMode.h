@@ -23,6 +23,9 @@ public:
 	
 	/** Constructor */
 	AAesirCombatPrototypeGameMode();
+
+	UFUNCTION(BlueprintPure, Category="Aesir|Match")
+	EAesirMatchResult GetMatchResult() const { return MatchResult; }
 	
 protected:
 	virtual void BeginPlay() override;
