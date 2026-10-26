@@ -244,3 +244,9 @@ UnrealEditor-Cmd.exe AesirWarden.uproject /Engine/Maps/Entry -EnablePlugins=Pyth
 | 动画速度变化与用户最终镜头构图 | 标准 `1.0` 倍速约 `1.848 s`、`0.5` 倍速约 `3.349 s`、最终版 `1.5` 倍速约 `1.344 s` 完成同步交接。日志依次为 `Saved/Logs/OpeningCameraMainSmoke.log`、`OpeningCameraMainSlow.log`、`OpeningCameraMainFast.log`；原始截图位于 `Saved/StartMenu/OpeningCamera/Normal/`、`Slow/`、`Fast/`。中间帧和终点已目视检查，最终美术节奏仍可在组件参数中调整。 |
 
 标准与慢速实机记录来自加入帧间直线段补充检查前的构建，最终版另外通过全部 16 项回归及快速实机检查。实机日志仍包含队友服务离线等原有提示，未阻塞本次流程；本轮不是 cooked Windows 包或正式性能验收。
+
+### 2026-10-26 队友开发分支中的菜单恢复
+
+营火功能此前保存在 `codex/campfire-start-menu@9dd9414`，未包含于队友分支最初使用的 main `17a8fef`。从该 main 分支测试时会缺少 `BP_AesirCampfireStart` 及其原生父类，日志报告 Main 外部 Actor 的 class descriptor 无法找到。已将菜单功能合入 `codex/companion-issue-19`，恢复 Main 默认地图，同时保留 #19 的 scoped 聊天与探索执行；用户本地地图、营火实例和正在修改的聊天 Controller 蓝图均未重存。
+
+完整工程 Editor 构建、16 项菜单自动化和 6 项队友专项回归通过。Main Standalone 再次通过菜单等待 10 秒、真实开始按钮、坐姿/起身、安全镜头与输入/HUD 交接，两个 Boss 在菜单期间保持等待；最终日志为 `Saved/Logs/CompanionMenuRestoreMainFinal.log`。详细版本、报告和边界见[队友文本接入的集成复验](11_CompanionTextSetup.md#营火菜单集成复验)。

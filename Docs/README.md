@@ -11,6 +11,7 @@
 | 逐项对照15项AI能力的位置、已有计划、同步与断网边界 | [AI部署与离线行为](02_Design_Doc/TDD/06_Deployment.md) · [ADR-003](02_Design_Doc/TDD/Decisions/03_ADR003SplitAIDeployment.md) |
 | 接入已采纳的对话编排、实时语音、游戏Agent、记忆和云端演进 | [NPC交互与服务演进](02_Design_Doc/TDD/07_NPCInteractionEvolution.md)，20项职责、用例扩展与交付依赖 |
 | 按服务已实现能力升级UE，并验证文本动作与断网恢复 | [NPC v0.4跨仓接入基线](02_Design_Doc/TDD/08_NPCScopedHandoff.md)，锁定两仓提交、Bearer/绑定/epoch、支持边界和UE验收切片 |
+| 配置和验证队友文本聊天、跟随与等待 | [队友文本接入](05_Development_Guide/11_CompanionTextSetup.md)，#19 配置、UI、取消/重试和实际验证边界 |
 | 查 Bug 或检查改动有没有影响旧功能 | [已知问题](06_Test_Doc/02_KnownIssues.md) · [日常检查表](06_Test_Doc/01_VerificationMatrix.md) · [打包检查](07_Release/01_ReleaseChecklist.md) |
 | 验证 DarkRuins 地图的性能与分区加载 | [完整测试流程与控制台命令](06_Test_Doc/03_DarkRuinsPerformanceTest.md) · [实测结果、迁移与优化交接](06_Test_Doc/04_DarkRuinsPerformanceAndMigrationHandoff.md) |
 | 接入 RL Boss 或做对照实验 | [Boss RL 入口](08_RL_Research/README.md) |
