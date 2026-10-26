@@ -49,6 +49,7 @@ public:
 	AAesirCombatPrototypeCharacter();	
 
 protected:
+	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 protected:
@@ -58,6 +59,9 @@ protected:
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
+
+	/** Mouse-only preferences; gamepad Look keeps its authored input scaling. */
+	void MouseLook(const FInputActionValue& Value);
 
 public:
 

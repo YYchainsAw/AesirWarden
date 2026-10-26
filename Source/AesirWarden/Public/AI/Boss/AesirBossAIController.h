@@ -6,9 +6,11 @@
 #include "AIController.h"
 #include "AI/Boss/AesirBossDecisionTypes.h"
 #include "AI/Boss/AesirBossTelemetryTypes.h"
+#include "Framework/Flow/AesirLevelFlowTypes.h"
 #include "AesirBossAIController.generated.h"
 
 class UBehaviorTree;
+class AAesirLevelFlowDirector;
 class UAesirBossActionComponent;
 class UAesirBossObservationComponent;
 class UAesirBossPolicyClientComponent;
@@ -69,8 +71,15 @@ public:
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnUnPossess() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	void StartPossessedBossPolicy();
+	void ClearLevelStartBinding();
+
+	UFUNCTION()
+	void HandleLevelFlowStateChanged(EAesirLevelFlowState PreviousState, EAesirLevelFlowState NewState);
+
 	bool ShouldSuppressRepeatedDecision(
 		EAesirBossAction Action,
 		AActor* Target,
@@ -135,4 +144,6 @@ private:
 		EAesirBossPolicySource::BehaviorTree;
 	float LastDecisionWorldTimeSeconds = 0.0f;
 	bool bHasLastDecisionRequest = false;
+	bool bWaitingForLevelStart = false;
+	TWeakObjectPtr<AAesirLevelFlowDirector> StartupFlowDirector;
 };

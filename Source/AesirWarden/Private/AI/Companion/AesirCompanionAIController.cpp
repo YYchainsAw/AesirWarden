@@ -8,13 +8,31 @@
 #include "AesirWarden.h"
 #include "BrainComponent.h"
 #include "AI/Companion/TacticalOrderComponent.h"
+#include "EngineUtils.h"
+#include "Framework/Flow/AesirLevelFlowDirector.h"
 
 void AAesirCompanionAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
+	ClearLevelStartBinding();
+	bWaitingForLevelStart = false;
 	bWaitingForPlayerCommand = false;
 
-	if (BehaviorTreeAsset)
+	for (TActorIterator<AAesirLevelFlowDirector> It(GetWorld()); It; ++It)
+	{
+		const EAesirLevelFlowState State = It->GetFlowState();
+		if (State == EAesirLevelFlowState::Uninitialized ||
+			State == EAesirLevelFlowState::MainMenu ||
+			State == EAesirLevelFlowState::OpeningCinematic)
+		{
+			bWaitingForLevelStart = true;
+			StartupFlowDirector = *It;
+			It->OnFlowStateChanged.AddUniqueDynamic(this,
+				&AAesirCompanionAIController::HandleLevelFlowStateChanged);
+		}
+		break;
+	}
+	if (!bWaitingForLevelStart && BehaviorTreeAsset)
 		RunBehaviorTree(BehaviorTreeAsset);
 
 	if (UGameInstance* GameInstance = GetGameInstance())
@@ -30,6 +48,43 @@ void AAesirCompanionAIController::OnPossess(APawn* InPawn)
 
 void AAesirCompanionAIController::OnUnPossess()
 {
+	ClearLevelStartBinding();
+	UnsubscribeFromChat();
+	bWaitingForLevelStart = false;
+	bWaitingForPlayerCommand = false;
+	Super::OnUnPossess();
+}
+
+void AAesirCompanionAIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	ClearLevelStartBinding();
+	UnsubscribeFromChat();
+	Super::EndPlay(EndPlayReason);
+}
+
+void AAesirCompanionAIController::ClearLevelStartBinding()
+{
+	if (AAesirLevelFlowDirector* Flow = StartupFlowDirector.Get())
+	{
+		Flow->OnFlowStateChanged.RemoveDynamic(this,
+			&AAesirCompanionAIController::HandleLevelFlowStateChanged);
+	}
+	StartupFlowDirector.Reset();
+}
+
+void AAesirCompanionAIController::HandleLevelFlowStateChanged(
+	EAesirLevelFlowState PreviousState, EAesirLevelFlowState NewState)
+{
+	if (!bWaitingForLevelStart || NewState != EAesirLevelFlowState::Exploration)
+		return;
+	ClearLevelStartBinding();
+	bWaitingForLevelStart = false;
+	if (IsValid(GetPawn()) && BehaviorTreeAsset)
+		RunBehaviorTree(BehaviorTreeAsset);
+}
+
+void AAesirCompanionAIController::UnsubscribeFromChat()
+{
 	if (UGameInstance* GameInstance = GetGameInstance())
 	{
 		if (UCompanionChatSubsystem* Chat =
@@ -39,13 +94,13 @@ void AAesirCompanionAIController::OnUnPossess()
 				this, &AAesirCompanionAIController::HandleAgentDirective);
 		}
 	}
-	bWaitingForPlayerCommand = false;
-	Super::OnUnPossess();
 }
 
 void AAesirCompanionAIController::HandleAgentDirective(
 	const FCompanionAgentDirective& Directive)
 {
+	if (bWaitingForLevelStart)
+		return;
 	const AAesirCompanionCharacter* Companion =
 		Cast<AAesirCompanionCharacter>(GetPawn());
 	if (!IsValid(Companion) ||

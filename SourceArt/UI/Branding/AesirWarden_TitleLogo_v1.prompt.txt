@@ -1,0 +1,9 @@
+Use case: logo-brand.
+Asset type: final game title logo PNG to overlay on promotional artwork for the game AESIR WARDEN.
+Create one original, minimal classical Nordic-fantasy typographic title logo.
+Text, verbatim and spelled correctly: "AESIR WARDEN". Use two tightly arranged centered lines: AESIR on the first line, WARDEN on the second. These are the only words. Every letter must remain immediately readable; do not substitute runes for letters.
+Visual style: restrained ancient classical carved serif capital lettering, strong clean letter silhouettes, modest wedge serifs, subtle Nordic geometric cuts and very sparse symmetrical knot/rune-inspired accents integrated into the lettering. Refined and simple, suitable for a realistic ancient-ruins action RPG. No heavy ornament, bulky crest, shield, skull, characters, weapons, or illustration.
+Color: high-brightness luminous warm ivory with pale champagne-gold edges. Most letter faces must be solid bright ivory for excellent small-size recognition. A very fine restrained dark contour can improve contrast over artwork; no heavy extrusion, huge shadow, bloom cloud, or haze. Crisp antialiased edges and clean transparent cutouts between letters.
+Background: genuine completely transparent alpha background, not white paint, not a checkerboard painted into the image. The logo must be a usable isolated overlay.
+Canvas: landscape PNG, target 1920 x 1080 pixels or larger, absolutely no less than 1280 pixels wide and 720 pixels high. Make the entire logo large and fit the canvas tightly: occupy approximately 96% of the width and 94% of the height, with only a very thin safety margin so no letter or serif is clipped. Minimize all four outer blank margins. Balance the two lines to fill a compact wide rectangular composition. No presentation board or mockup.
+Deliver a single polished finished logo, no alternate versions, no watermark, no extra text.

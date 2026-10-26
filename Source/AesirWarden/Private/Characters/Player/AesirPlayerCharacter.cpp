@@ -28,6 +28,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Framework/Camera/AesirCameraGuideTrigger.h"
 
 namespace
 {
@@ -136,8 +137,50 @@ AAesirPlayerCharacter::GetAesirAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
+bool AAesirPlayerCharacter::TryAcquireCameraGuide(AActor* GuideOwner)
+{
+	if (!IsValid(GuideOwner) || !CanAcceptCameraGuide() || IsCameraGuideActive())
+	{
+		return false;
+	}
+	ActiveCameraGuideOwner = GuideOwner;
+	return true;
+}
+
+void AAesirPlayerCharacter::ReleaseCameraGuide(AActor* GuideOwner)
+{
+	if (ActiveCameraGuideOwner.Get() == GuideOwner)
+	{
+		ActiveCameraGuideOwner.Reset();
+	}
+}
+
+bool AAesirPlayerCharacter::IsCameraGuideActive() const
+{
+	return ActiveCameraGuideOwner.IsValid();
+}
+
+bool AAesirPlayerCharacter::CanAcceptCameraGuide() const
+{
+	if (IsActorBeingDestroyed() || bIsHitStunned || IsGASDead())
+	{
+		return false;
+	}
+	if (CombatStateComponent)
+	{
+		const EAesirCombatState State = CombatStateComponent->GetCombatState();
+		return State != EAesirCombatState::HitReact && State != EAesirCombatState::Stunned &&
+			State != EAesirCombatState::Dead && State != EAesirCombatState::AttackRecoiled;
+	}
+	return true;
+}
+
 void AAesirPlayerCharacter::DoLook(float Yaw, float Pitch)
 {
+	if (IsCameraGuideActive())
+	{
+		return;
+	}
 	const bool bLockedOn =
 		TargetingComponent &&
 		TargetingComponent->IsLockedOn();
@@ -577,6 +620,11 @@ void AAesirPlayerCharacter::BeginPlay()
 void AAesirPlayerCharacter::EndPlay(
 	const EEndPlayReason::Type EndPlayReason)
 {
+	if (AAesirCameraGuideTrigger* Guide = Cast<AAesirCameraGuideTrigger>(ActiveCameraGuideOwner.Get()))
+	{
+		Guide->CancelGuide();
+	}
+	ActiveCameraGuideOwner.Reset();
 	for (const TPair<TWeakObjectPtr<AActor>, float>& Entry :
 		 CameraFadeAmounts)
 	{
@@ -606,7 +654,7 @@ void AAesirPlayerCharacter::Tick(float DeltaSeconds)
 	const bool bShouldAssistCamera =
 		TargetingComponent &&
 		TargetingComponent->IsLockedOn() &&
-		!IsGASDead();
+		!IsGASDead() && !IsCameraGuideActive();
 
 	if (!bShouldAssistCamera)
 		return;
@@ -1052,7 +1100,7 @@ void AAesirPlayerCharacter::UpdateAttackFacing(float DeltaSeconds)
 void AAesirPlayerCharacter::HandleLockOnInput()
 {
 	if (bIsHitStunned ||
-		IsGASDead())
+		IsGASDead() || IsCameraGuideActive())
 		return;
 	
 	if (TargetingComponent)

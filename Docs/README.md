@@ -12,6 +12,7 @@
 | 接入已采纳的对话编排、实时语音、游戏Agent、记忆和云端演进 | [NPC交互与服务演进](02_Design_Doc/TDD/07_NPCInteractionEvolution.md)，20项职责、用例扩展与交付依赖 |
 | 按服务已实现能力升级UE，并验证文本动作与断网恢复 | [NPC v0.4跨仓接入基线](02_Design_Doc/TDD/08_NPCScopedHandoff.md)，锁定两仓提交、Bearer/绑定/epoch、支持边界和UE验收切片 |
 | 查 Bug 或检查改动有没有影响旧功能 | [已知问题](06_Test_Doc/02_KnownIssues.md) · [日常检查表](06_Test_Doc/01_VerificationMatrix.md) · [打包检查](07_Release/01_ReleaseChecklist.md) |
+| 验证 DarkRuins 地图的性能与分区加载 | [完整测试流程与控制台命令](06_Test_Doc/03_DarkRuinsPerformanceTest.md) · [实测结果、迁移与优化交接](06_Test_Doc/04_DarkRuinsPerformanceAndMigrationHandoff.md) |
 | 接入 RL Boss 或做对照实验 | [Boss RL 入口](08_RL_Research/README.md) |
 | 查看课程 Word、说明对象职责或检查需求与 UML | [Word需求文档修订稿](09_Course_Analysis/Word/AesirWarden需求分析文档.docx) · [课程分析与基线](09_Course_Analysis/README.md) · [重试对象分析](09_Course_Analysis/01_RetryObjectAnalysis.md) · [需求追踪](09_Course_Analysis/02_Traceability.md) |
 

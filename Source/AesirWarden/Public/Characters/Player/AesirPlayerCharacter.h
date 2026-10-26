@@ -65,6 +65,16 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Aesir|Abilities")
 	UAesirAbilitySystemComponent* GetAesirAbilitySystemComponent() const;
+
+	/** One world trigger may temporarily own the player's guided camera rotation. */
+	bool TryAcquireCameraGuide(AActor* GuideOwner);
+	void ReleaseCameraGuide(AActor* GuideOwner);
+
+	UFUNCTION(BlueprintPure, Category = "Aesir|Camera|Guidance")
+	bool IsCameraGuideActive() const;
+
+	UFUNCTION(BlueprintPure, Category = "Aesir|Camera|Guidance")
+	bool CanAcceptCameraGuide() const;
 	
 	virtual void DoLook(float Yaw, float Pitch) override;
 	
@@ -390,4 +400,5 @@ private:
 	float CameraOcclusionTraceTimeRemaining = 0.0f;
 	TSet<TWeakObjectPtr<AActor>> CameraOccludingActors;
 	TMap<TWeakObjectPtr<AActor>, float> CameraFadeAmounts;
+	TWeakObjectPtr<AActor> ActiveCameraGuideOwner;
 };

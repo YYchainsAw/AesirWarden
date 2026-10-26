@@ -11,6 +11,8 @@
 #include "AI/Boss/AesirBossTelemetryComponent.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
+#include "Framework/Flow/AesirLevelFlowDirector.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -100,6 +102,14 @@ FAesirBossActionOutcome AAesirBossAIController::ExecuteBossDecisionInternal(
 	float PolicyEvaluationMilliseconds,
 	const FAesirBossObservation& Observation)
 {
+	if (bWaitingForLevelStart)
+	{
+		FAesirBossActionOutcome Outcome;
+		Outcome.Action = Action;
+		Outcome.Result = EAesirBossActionResult::Busy;
+		Outcome.Target = Target;
+		return Outcome;
+	}
 	const float WorldTimeSeconds = GetWorld()
 		? GetWorld()->GetTimeSeconds()
 		: 0.0f;
@@ -166,6 +176,8 @@ FAesirBossActionOutcome AAesirBossAIController::ExecuteBossDecisionInternal(
 void AAesirBossAIController::ActivateBehaviorTreeFallback(
 	const FString& Reason)
 {
+	if (bWaitingForLevelStart)
+		return;
 	if (ActivePolicySource == EAesirBossPolicySource::Fallback)
 		return;
 
@@ -246,7 +258,7 @@ FString AAesirBossAIController::StartBossEpisode(
 	EAesirBossPolicySource PolicySource,
 	const FString& EpisodeId)
 {
-	if (!IsValid(BossTelemetryComponent))
+	if (bWaitingForLevelStart || !IsValid(BossTelemetryComponent))
 		return FString();
 
 	const FString StartedEpisodeId =
@@ -271,6 +283,8 @@ FAesirBossEpisodeSummary AAesirBossAIController::EndBossEpisode(
 void AAesirBossAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
+	ClearLevelStartBinding();
+	bWaitingForLevelStart = false;
 	ResetDecisionDebounce();
 	ActivePolicySource = bUseReinforcementLearningPolicy
 		? EAesirBossPolicySource::ReinforcementLearning
@@ -280,6 +294,33 @@ void AAesirBossAIController::OnPossess(APawn* InPawn)
 		BossActionComponent->InitializeForAvatar(InPawn);
 	if (IsValid(BossObservationComponent))
 		BossObservationComponent->InitializeForAvatar(InPawn);
+
+	// A placed boss can be beside the campfire before the flow director's BeginPlay.
+	// Wait for gameplay instead of starting BT, HTTP inference or an episode in the menu.
+	for (TActorIterator<AAesirLevelFlowDirector> It(GetWorld()); It; ++It)
+	{
+		const EAesirLevelFlowState State = It->GetFlowState();
+		if (State == EAesirLevelFlowState::Uninitialized ||
+			State == EAesirLevelFlowState::MainMenu ||
+			State == EAesirLevelFlowState::OpeningCinematic)
+		{
+			bWaitingForLevelStart = true;
+			StartupFlowDirector = *It;
+			It->OnFlowStateChanged.AddUniqueDynamic(this,
+				&AAesirBossAIController::HandleLevelFlowStateChanged);
+			return;
+		}
+		break;
+	}
+	StartPossessedBossPolicy();
+}
+
+void AAesirBossAIController::StartPossessedBossPolicy()
+{
+	APawn* InPawn = GetPawn();
+	if (!IsValid(InPawn) || bWaitingForLevelStart)
+		return;
+
 	if (IsValid(BossTelemetryComponent))
 	{
 		BossTelemetryComponent->StartEpisode(
@@ -313,8 +354,30 @@ void AAesirBossAIController::OnPossess(APawn* InPawn)
 	}
 }
 
+void AAesirBossAIController::HandleLevelFlowStateChanged(
+	EAesirLevelFlowState PreviousState, EAesirLevelFlowState NewState)
+{
+	if (!bWaitingForLevelStart || NewState != EAesirLevelFlowState::Exploration)
+		return;
+	ClearLevelStartBinding();
+	bWaitingForLevelStart = false;
+	StartPossessedBossPolicy();
+}
+
+void AAesirBossAIController::ClearLevelStartBinding()
+{
+	if (AAesirLevelFlowDirector* Flow = StartupFlowDirector.Get())
+	{
+		Flow->OnFlowStateChanged.RemoveDynamic(this,
+			&AAesirBossAIController::HandleLevelFlowStateChanged);
+	}
+	StartupFlowDirector.Reset();
+}
+
 void AAesirBossAIController::OnUnPossess()
 {
+	ClearLevelStartBinding();
+	bWaitingForLevelStart = false;
 	if (IsValid(BossPolicyClientComponent))
 		BossPolicyClientComponent->Stop();
 	if (IsValid(BossTelemetryComponent) &&
@@ -328,4 +391,10 @@ void AAesirBossAIController::OnUnPossess()
 	ResetDecisionDebounce();
 
 	Super::OnUnPossess();
+}
+
+void AAesirBossAIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	ClearLevelStartBinding();
+	Super::EndPlay(EndPlayReason);
 }

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Framework/Flow/AesirLevelFlowTypes.h"
+#include "Components/SlateWrapperTypes.h"
 #include "TimerManager.h"
 #include "AesirLevelFlowDirector.generated.h"
 
@@ -14,6 +15,7 @@ class APawn;
 class APlayerController;
 class ULevelSequencePlayer;
 class UUserWidget;
+class UWorldPartitionStreamingSourceComponent;
 
 /** One placed actor owns the first-level menu, opening and gameplay handoff. */
 UCLASS(Blueprintable)
@@ -32,20 +34,43 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Aesir|Level Flow")
 	bool RequestStartGame();
 
-	/** Complete the opening and restore gameplay control. Safe against duplicate callbacks. */
+	/** Exit from the menu without waiting for any external service. */
+	UFUNCTION(BlueprintCallable, Category = "Aesir|Level Flow")
+	bool RequestQuitGame();
+
+	UFUNCTION(BlueprintPure, Category = "Aesir|Level Flow")
+	EAesirLevelFlowState GetFlowState() const { return CurrentState; }
+
+	/** Complete the opening and restore gameplay control. Rejected while pawn presentation is pending. */
 	UFUNCTION(BlueprintCallable, Category = "Aesir|Level Flow")
 	bool EnterExploration();
 
-	/** Evaluate the sequence's end pose before using the same camera handoff as natural completion. */
+	/** Cancel pawn presentation, evaluate any active sequence's end, and use the normal camera handoff. */
 	UFUNCTION(BlueprintCallable, Category = "Aesir|Level Flow")
 	bool SkipOpeningCinematic();
 
 	UPROPERTY(BlueprintAssignable, Category = "Aesir|Level Flow")
 	FAesirLevelFlowStateChanged OnFlowStateChanged;
 
+	/** Pins the start area while the menu and opening camera are active. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aesir|Level Flow|Streaming")
+	TObjectPtr<UWorldPartitionStreamingSourceComponent> StartupStreamingSource;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	/** Native presentation hooks run on the possessed pawn without replacing its AnimInstance. */
+	virtual void PrepareMainMenuPresentation();
+	virtual bool BeginOpeningPresentation();
+	virtual void FinishOpeningPresentation(bool bSkipped);
+	virtual bool TrySkipOpeningPresentation();
+	virtual bool IsGameplayCameraReady() const;
+	virtual float GetGameplayCameraBlendTime() const;
+	bool IsOpeningPresentationPending() const { return bOpeningPresentationPending; }
+	void CompleteOpeningPresentation();
+	/** Restore the locked menu after presentation validation fails; never fall through into combat. */
+	void AbortOpeningPresentation(FText FailureStatus);
 
 	/** Bind the menu's Blueprint dispatcher here, before the widget is added to the viewport. */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Aesir|Level Flow")
@@ -68,12 +93,22 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aesir|Level Flow|UI")
 	int32 MainMenuZOrder = 100;
 
+	/** Only these configured HUD classes are hidden; unrelated UI is left under its owner's control. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aesir|Level Flow|UI")
+	TArray<TSubclassOf<UUserWidget>> GameplayHUDWidgetClasses;
+
 	/** Camera blend duration after the opening, or directly from the menu when no sequence is set. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aesir|Level Flow|Camera", meta = (ClampMin = "0.0", Units = "s"))
 	float OpeningBlendTime = 0.6f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Aesir|Level Flow|Initialization", meta = (ClampMin = "0.1", Units = "s"))
 	float InitializationTimeout = 10.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Aesir|Level Flow|Streaming", meta = (ClampMin = "1.0", Units = "s"))
+	float GameplayStreamingTimeout = 30.0f;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Aesir|Level Flow|Runtime")
+	bool bStartupStreamingReady = false;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Aesir|Level Flow|Runtime")
 	EAesirLevelFlowState CurrentState = EAesirLevelFlowState::Uninitialized;
@@ -88,17 +123,32 @@ protected:
 	TObjectPtr<UUserWidget> MainMenuRef;
 
 private:
+	friend class UAesirStartMenuEditorLibrary;
+
 	void TryInitializeFlow();
+	void RecoverMainMenuAfterOpeningFailure();
+	void RefreshMenuStreamingState();
+	bool IsStartupStreamingReady() const;
+	void PresentMainMenu();
+	void HideGameplayHUD();
+	void RestoreGameplayHUD();
 	bool RefreshPlayerReferences();
 	void SetFlowState(EAesirLevelFlowState NewState);
 	void AcquireInputLocks();
 	void ReleaseInputLocks();
 	void BeginGameplayCameraHandoff();
+	void PlayOpeningSequenceOrHandoff();
 	void CompleteGameplayCameraHandoff();
 	void UnbindOpeningSequence();
 
 	UFUNCTION()
 	void HandleOpeningSequenceFinished();
+
+	UFUNCTION()
+	void HandleStartRequested();
+
+	UFUNCTION()
+	void HandleQuitRequested();
 
 	UPROPERTY(Transient)
 	TObjectPtr<ULevelSequencePlayer> ActiveOpeningPlayer;
@@ -107,9 +157,16 @@ private:
 	TWeakObjectPtr<APlayerController> InputLockController;
 	FTimerHandle InitializationTimerHandle;
 	FTimerHandle CameraHandoffTimerHandle;
+	FTimerHandle MenuStreamingTimerHandle;
 	double InitializationStartedAt = 0.0;
+	double GameplayStreamingStartedAt = 0.0;
 	bool bInitialized = false;
 	bool bOwnsLevelFlow = false;
 	bool bOwnsInputLocks = false;
 	bool bCameraHandoffStarted = false;
+	bool bOpeningPresentationPending = false;
+	bool bWaitingForGameplayStreaming = false;
+	bool bMenuFocusInitialized = false;
+	FText OpeningFailureStatus;
+	TMap<TWeakObjectPtr<UUserWidget>, ESlateVisibility> HiddenGameplayHUD;
 };

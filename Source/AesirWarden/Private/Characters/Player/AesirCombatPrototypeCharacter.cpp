@@ -11,6 +11,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "AesirWarden.h"
+#include "Settings/AesirGameUserSettings.h"
 
 AAesirCombatPrototypeCharacter::AAesirCombatPrototypeCharacter()
 {
@@ -50,6 +51,15 @@ AAesirCombatPrototypeCharacter::AAesirCombatPrototypeCharacter()
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
 
+void AAesirCombatPrototypeCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	if (UAesirGameUserSettings* Settings = UAesirGameUserSettings::Get())
+	{
+		Settings->ApplyRuntimeSettings(GetWorld());
+	}
+}
+
 void AAesirCombatPrototypeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
@@ -61,7 +71,7 @@ void AAesirCombatPrototypeCharacter::SetupPlayerInputComponent(UInputComponent* 
 
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AAesirCombatPrototypeCharacter::Move);
-		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AAesirCombatPrototypeCharacter::Look);
+		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AAesirCombatPrototypeCharacter::MouseLook);
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AAesirCombatPrototypeCharacter::Look);
@@ -87,6 +97,21 @@ void AAesirCombatPrototypeCharacter::Look(const FInputActionValue& Value)
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
 	// route the input
+	DoLook(LookAxisVector.X, LookAxisVector.Y);
+}
+
+void AAesirCombatPrototypeCharacter::MouseLook(const FInputActionValue& Value)
+{
+	FVector2D LookAxisVector = Value.Get<FVector2D>();
+	if (const UAesirGameUserSettings* Settings = UAesirGameUserSettings::Get())
+	{
+		LookAxisVector *= Settings->GetMouseSensitivity();
+		if (Settings->GetInvertMouseY())
+		{
+			LookAxisVector.Y *= -1.0f;
+		}
+	}
+	// Keep the player's lock-on and camera-guide rules in its virtual DoLook.
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
 }
 

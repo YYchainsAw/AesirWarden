@@ -1,0 +1,631 @@
+[
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\bar_fill_hp.png",
+    "Width": 248,
+    "Height": 20,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 2,
+    "AlphaMax": 255,
+    "TransparentPixels": 0,
+    "PartialPixels": 2774,
+    "OpaquePixels": 2186,
+    "VisibleBounds": [
+      0,
+      0,
+      247,
+      19
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\bar_fill_mp.png",
+    "Width": 248,
+    "Height": 20,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 2,
+    "AlphaMax": 255,
+    "TransparentPixels": 0,
+    "PartialPixels": 2774,
+    "OpaquePixels": 2186,
+    "VisibleBounds": [
+      0,
+      0,
+      247,
+      19
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\bar_frame.png",
+    "Width": 256,
+    "Height": 28,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 4,
+    "PartialPixels": 1656,
+    "OpaquePixels": 5508,
+    "VisibleBounds": [
+      0,
+      0,
+      255,
+      27
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\bar_segments.png",
+    "Width": 248,
+    "Height": 20,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 147,
+    "TransparentPixels": 4160,
+    "PartialPixels": 800,
+    "OpaquePixels": 0,
+    "VisibleBounds": [
+      22,
+      0,
+      225,
+      19
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\btn_icon_disabled.png",
+    "Width": 56,
+    "Height": 56,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 7,
+    "PartialPixels": 679,
+    "OpaquePixels": 2450,
+    "VisibleBounds": [
+      0,
+      0,
+      55,
+      55
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\btn_icon_hover.png",
+    "Width": 56,
+    "Height": 56,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 10,
+    "AlphaMax": 255,
+    "TransparentPixels": 0,
+    "PartialPixels": 684,
+    "OpaquePixels": 2452,
+    "VisibleBounds": [
+      0,
+      0,
+      55,
+      55
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\btn_icon_normal.png",
+    "Width": 56,
+    "Height": 56,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 7,
+    "PartialPixels": 677,
+    "OpaquePixels": 2452,
+    "VisibleBounds": [
+      0,
+      0,
+      55,
+      55
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\btn_icon_pressed.png",
+    "Width": 56,
+    "Height": 56,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 8,
+    "PartialPixels": 624,
+    "OpaquePixels": 2504,
+    "VisibleBounds": [
+      0,
+      0,
+      55,
+      55
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\btn_standard_disabled.png",
+    "Width": 160,
+    "Height": 56,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 12,
+    "PartialPixels": 1412,
+    "OpaquePixels": 7536,
+    "VisibleBounds": [
+      0,
+      0,
+      159,
+      55
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\btn_standard_hover.png",
+    "Width": 160,
+    "Height": 56,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 2,
+    "AlphaMax": 255,
+    "TransparentPixels": 0,
+    "PartialPixels": 1421,
+    "OpaquePixels": 7539,
+    "VisibleBounds": [
+      0,
+      0,
+      159,
+      55
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\btn_standard_normal.png",
+    "Width": 160,
+    "Height": 56,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 12,
+    "PartialPixels": 1408,
+    "OpaquePixels": 7540,
+    "VisibleBounds": [
+      0,
+      0,
+      159,
+      55
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\btn_standard_pressed.png",
+    "Width": 160,
+    "Height": 56,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 8,
+    "PartialPixels": 1260,
+    "OpaquePixels": 7692,
+    "VisibleBounds": [
+      0,
+      0,
+      159,
+      55
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\checkbox_off.png",
+    "Width": 32,
+    "Height": 32,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 3,
+    "AlphaMax": 255,
+    "TransparentPixels": 0,
+    "PartialPixels": 336,
+    "OpaquePixels": 688,
+    "VisibleBounds": [
+      0,
+      0,
+      31,
+      31
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\checkbox_on.png",
+    "Width": 32,
+    "Height": 32,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 3,
+    "AlphaMax": 255,
+    "TransparentPixels": 0,
+    "PartialPixels": 336,
+    "OpaquePixels": 688,
+    "VisibleBounds": [
+      0,
+      0,
+      31,
+      31
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\divider.png",
+    "Width": 192,
+    "Height": 16,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 2252,
+    "PartialPixels": 794,
+    "OpaquePixels": 26,
+    "VisibleBounds": [
+      0,
+      1,
+      191,
+      15
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\header_banner.png",
+    "Width": 192,
+    "Height": 56,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 8,
+    "PartialPixels": 2165,
+    "OpaquePixels": 8579,
+    "VisibleBounds": [
+      0,
+      0,
+      191,
+      55
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\panel_inset.png",
+    "Width": 64,
+    "Height": 64,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 4,
+    "PartialPixels": 724,
+    "OpaquePixels": 3368,
+    "VisibleBounds": [
+      0,
+      0,
+      63,
+      63
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\panel_ornate.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 9,
+    "PartialPixels": 2269,
+    "OpaquePixels": 14106,
+    "VisibleBounds": [
+      0,
+      0,
+      127,
+      127
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\panel_plain.png",
+    "Width": 96,
+    "Height": 96,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 8,
+    "PartialPixels": 407,
+    "OpaquePixels": 8801,
+    "VisibleBounds": [
+      0,
+      0,
+      95,
+      95
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\slot_empty.png",
+    "Width": 64,
+    "Height": 64,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 4,
+    "PartialPixels": 816,
+    "OpaquePixels": 3276,
+    "VisibleBounds": [
+      0,
+      0,
+      63,
+      63
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\slot_hover.png",
+    "Width": 64,
+    "Height": 64,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 4,
+    "PartialPixels": 816,
+    "OpaquePixels": 3276,
+    "VisibleBounds": [
+      0,
+      0,
+      63,
+      63
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\slot_selected.png",
+    "Width": 64,
+    "Height": 64,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 43,
+    "AlphaMax": 255,
+    "TransparentPixels": 0,
+    "PartialPixels": 828,
+    "OpaquePixels": 3268,
+    "VisibleBounds": [
+      0,
+      0,
+      63,
+      63
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\toggle_off.png",
+    "Width": 64,
+    "Height": 32,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 125,
+    "PartialPixels": 704,
+    "OpaquePixels": 1219,
+    "VisibleBounds": [
+      0,
+      0,
+      63,
+      31
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\toggle_on.png",
+    "Width": 64,
+    "Height": 32,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 125,
+    "PartialPixels": 704,
+    "OpaquePixels": 1219,
+    "VisibleBounds": [
+      0,
+      0,
+      63,
+      31
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\ui\\png\\tooltip.png",
+    "Width": 64,
+    "Height": 48,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 4,
+    "PartialPixels": 624,
+    "OpaquePixels": 2444,
+    "VisibleBounds": [
+      0,
+      0,
+      63,
+      47
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\heart.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 12890,
+    "PartialPixels": 1576,
+    "OpaquePixels": 1918,
+    "VisibleBounds": [
+      14,
+      22,
+      113,
+      117
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\shield.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 12676,
+    "PartialPixels": 1770,
+    "OpaquePixels": 1938,
+    "VisibleBounds": [
+      16,
+      9,
+      111,
+      118
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\sword.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 13809,
+    "PartialPixels": 1143,
+    "OpaquePixels": 1432,
+    "VisibleBounds": [
+      38,
+      8,
+      89,
+      115
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\boots.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 12861,
+    "PartialPixels": 1690,
+    "OpaquePixels": 1833,
+    "VisibleBounds": [
+      33,
+      16,
+      108,
+      111
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\potion.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 12499,
+    "PartialPixels": 1861,
+    "OpaquePixels": 2024,
+    "VisibleBounds": [
+      30,
+      9,
+      97,
+      116
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\fire.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 12587,
+    "PartialPixels": 1735,
+    "OpaquePixels": 2062,
+    "VisibleBounds": [
+      31,
+      5,
+      96,
+      119
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\lightning.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 13876,
+    "PartialPixels": 941,
+    "OpaquePixels": 1567,
+    "VisibleBounds": [
+      30,
+      8,
+      98,
+      119
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\bag.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 11886,
+    "PartialPixels": 2149,
+    "OpaquePixels": 2349,
+    "VisibleBounds": [
+      14,
+      16,
+      113,
+      113
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\skull.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 11875,
+    "PartialPixels": 2126,
+    "OpaquePixels": 2383,
+    "VisibleBounds": [
+      19,
+      16,
+      108,
+      107
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\coin.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 12158,
+    "PartialPixels": 2086,
+    "OpaquePixels": 2140,
+    "VisibleBounds": [
+      16,
+      16,
+      111,
+      111
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\elixir.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 12142,
+    "PartialPixels": 2134,
+    "OpaquePixels": 2108,
+    "VisibleBounds": [
+      22,
+      10,
+      105,
+      117
+    ]
+  },
+  {
+    "File": "D:\\YYchainsaw\\Unreal-Projects\\AesirWarden\\SourceArt\\UI\\Emberhold\\emberhold-free-v1.0\\emberhold-free\\icons\\png\\white\\128px\\defense.png",
+    "Width": 128,
+    "Height": 128,
+    "PixelFormat": "Format32bppArgb",
+    "AlphaMin": 0,
+    "AlphaMax": 255,
+    "TransparentPixels": 12034,
+    "PartialPixels": 2073,
+    "OpaquePixels": 2277,
+    "VisibleBounds": [
+      19,
+      10,
+      108,
+      115
+    ]
+  }
+]
