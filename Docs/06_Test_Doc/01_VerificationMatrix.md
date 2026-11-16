@@ -109,7 +109,7 @@ TTS/VAD是已采纳的后置范围，实现及协议明确后执行相应子场�
 
 | ID | 何时执行 | 入口 | 实际结果 |
 | --- | --- | --- | --- |
-| BUILD-01 | 完整流程可用后打BT包；PPO/NPC接入后回归相应路径 | [发布检查](../07_Release/01_ReleaseChecklist.md) | 未执行 |
+| BUILD-01 | 完整流程可用后打BT包；PPO/NPC接入后回归相应路径 | [发布检查](../07_Release/01_ReleaseChecklist.md) | 2026-11-16：Win64 Development 构建、Cook、归档及包内胜败冒烟通过。首包漏收营火动画，补齐后开始游戏恢复。完整操作、战斗、连续重试与第二台机器待验。[构建与运行证据](../07_Release/Evidence/WindowsBTBaseline20261116.json) |
 | RL-COMPARE-01 | 模型/规则稳定并冻结实验条件后 | [评估方案](../08_RL_Research/03_EvaluationProtocol.md)，按纯BT/纯PPO/回退分组，独立样本及指标可追溯 | 未执行 |
 | MAGIC-01 | 符文方案确定并实现后 | [符文设计](../02_Design_Doc/GDD/05_MagicSystem.md)，不把待定槽数/成长当本次通过项 | 未执行 |
 | SAVE-01 | 确定继续游戏与持久存档需求后 | [存档设计](../02_Design_Doc/TDD/04_SaveSystem.md)，当前重试不依赖持久存档 | 未执行 |

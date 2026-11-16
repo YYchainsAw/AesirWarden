@@ -1,0 +1,164 @@
+{
+  "date": "2026-11-16",
+  "timezone": "Asia/Shanghai",
+  "issue": 8,
+  "engine": "UE 5.8.4 CL58902052",
+  "map": "/Game/Main",
+  "target": "Win64 Development",
+  "machine": {
+    "os": "Microsoft Windows 11 企业版",
+    "version": "10.0.26300",
+    "build": "26300",
+    "physical_memory_kib": 32778824,
+    "cpu": "AMD Ryzen 7 8845H w/ Radeon 780M Graphics",
+    "cpu_cores": 8,
+    "cpu_logical_processors": 16,
+    "display_adapters": [
+      {
+        "name": "AMD Radeon 780M Graphics",
+        "driver": "32.0.31019.2002"
+      },
+      {
+        "name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+        "driver": "32.0.16.2101"
+      }
+    ]
+  },
+  "graphics_api": "D3D12",
+  "active_gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "smoke_resolution": "1920x1080 offscreen",
+  "assets": {
+    "file_count": 13899,
+    "size_bytes": 29148429331,
+    "manifest": {
+      "path": "Saved/Verification/Windows/20261116T065302Z/AssetManifest.json",
+      "sha256": "fd25c5af10473e4e3c089f9ba2f903529619b7c18ff7b10a8a14db5511115c15"
+    },
+    "main_map": {
+      "path": "Content/Main.umap",
+      "size_bytes": 115723,
+      "sha256": "aa2721a8c839687b8ea071f45c8d2062c14142bb991b5795229fea591c31aff3"
+    }
+  },
+  "interrupted_build": {
+    "last_cooked_packages": 2812,
+    "total_discovered_packages": 2897,
+    "exit_code": null,
+    "log": {
+      "path": "Saved/Verification/Windows/20261116T065302Z/BuildCookRun.log",
+      "sha256": "aa6eb692d3e17583a9ae3fb810322fd9ea49bb1ba4e235c8f46d51fcec7d46de"
+    }
+  },
+  "before_fix": {
+    "build": {
+      "source_commit": "e170a41c112b5c605f99ceab22178ec8c18f444f",
+      "exit_code": 0,
+      "duration_seconds": 621.931,
+      "cooked_packages": 2897,
+      "cook_errors": 0,
+      "cook_warnings": 5,
+      "summary": {
+        "path": "Saved/Verification/Windows/20261116T072632216961Z/summary.json",
+        "sha256": "c56565e7665f39eb817ec75a7ab3902fb740ad8f09793cdfda2c3e1649f3b191"
+      },
+      "log": {
+        "path": "Saved/Verification/Windows/20261116T072632216961Z/BuildCookRun.log",
+        "sha256": "2cab46f9926bcd3dc35aa175d1b4d78109fe681ca71dcf626db145cf4aa93ae0"
+      }
+    },
+    "runtime": {
+      "path": "Saved/Verification/WindowsRuntime/20261116T073738579722Z/summary.json",
+      "sha256": "18b38fa8a9c7c075c6b2398401563c21c18c3c31355757931d05fb7f87694341"
+    },
+    "package_manifest": {
+      "path": "Saved/Verification/Windows/20261116T072632216961Z/PackageManifest.json",
+      "sha256": "e011bf22ef532a23673d30ca7c2b9d39d011485fae77b481dd8251f35ab4c9fb"
+    },
+    "start_passed": false,
+    "missing_cooked_packages": [
+      "AS_SSH_Sit_Loop",
+      "AS_SSH_Sit_End"
+    ]
+  },
+  "after_fix": {
+    "build": {
+      "source_commit": "474c9596a4dc90fa8acc40564ef06806a2c3d87e",
+      "exit_code": 0,
+      "duration_seconds": 186.909,
+      "cooked_packages": 2899,
+      "cook_errors": 0,
+      "cook_warnings": 5,
+      "summary": {
+        "path": "Saved/Verification/Windows/20261116T073933020560Z/summary.json",
+        "sha256": "f7d92c04266c3aa4f4ac39e4caa5b5c49b29fcc3947371af69da843e65a4b51e"
+      },
+      "log": {
+        "path": "Saved/Verification/Windows/20261116T073933020560Z/BuildCookRun.log",
+        "sha256": "af6f35eea7eb1c903c10d95c21710ce16f7f6e5cd2ad7a01b0f933559393d8ce"
+      }
+    },
+    "package": {
+      "path": "Saved/Builds/WindowsBT",
+      "file_count": 44,
+      "size_bytes": 9286452308,
+      "manifest": {
+        "path": "Saved/Verification/Windows/20261116T073933020560Z/PackageManifest.json",
+        "sha256": "c6ca897fac3c1cbf6fb5f6e34163e67fa2c2e0dd5003e0f706b09ee75ff55f42"
+      },
+      "game_exe_sha256": "c13430405568b462d5a3f194146f2939a46ef1f845906dcf35b691686bea14b9"
+    },
+    "runtime": {
+      "path": "Saved/Verification/WindowsRuntime/20261116T074246325800Z/summary.json",
+      "sha256": "bde3b084aab94fcd3cdc9a648c2aac1e71116213287c9238db23f55f51114092"
+    },
+    "cases": {
+      "Victory": {
+        "exit_code": 0,
+        "passed": true,
+        "episode_id": "dc639edc-4fcc-490f-3359-abb5911b51e3",
+        "policy": "BehaviorTree",
+        "boss_result": "BossDefeat",
+        "result_events": 1,
+        "retry_focused": true,
+        "log": {
+          "path": "Saved/Verification/WindowsRuntime/20261116T074246325800Z/Victory.log",
+          "sha256": "c9a32e744eca9df23b1fbc81e4a5d5ae12796e2d24085d03291e386a0d55c651"
+        },
+        "result_screenshot": {
+          "path": "Saved/Builds/WindowsBT/AesirWarden/Saved/Verification/MainMatch/Victory-16E467B04AD4ECF5A91369A58E346299/Result.png",
+          "sha256": "f11c51e9e1447a7c736b1c52afbbb336232092c0a43d0e9038cd0bfe3037f112"
+        }
+      },
+      "Defeat": {
+        "exit_code": 0,
+        "passed": true,
+        "episode_id": "4f020a2d-4f31-a295-94ce-4e989367e1f5",
+        "policy": "BehaviorTree",
+        "boss_result": "BossVictory",
+        "result_events": 1,
+        "retry_focused": true,
+        "log": {
+          "path": "Saved/Verification/WindowsRuntime/20261116T074246325800Z/Defeat.log",
+          "sha256": "debc985c2751178fb132106d9661ab0a0bcd11248db8adc9b0a300ee56112df2"
+        },
+        "result_screenshot": {
+          "path": "Saved/Builds/WindowsBT/AesirWarden/Saved/Verification/MainMatch/Defeat-5B0C4482462C9BF8408AFE8F8BC3B574/Result.png",
+          "sha256": "670da66c310d7d2cedbbec1eee8f217a7957921c900fa0723becf366871171d6"
+        }
+      }
+    }
+  },
+  "scope": {
+    "map_start": "direct packaged game executable; standalone process per case",
+    "opening": "smoke skips cinematic after successful Start",
+    "boss_entry": "native encounter entry",
+    "death_trigger": "GAS test health adjustment",
+    "full_manual_combat": false,
+    "continuous_retry": false,
+    "return_to_menu": false,
+    "clean_second_machine": false,
+    "performance_baseline": false,
+    "retry_pr_included": false,
+    "visual_observation": "Offscreen result screenshots are dark; result control logic passed."
+  }
+}

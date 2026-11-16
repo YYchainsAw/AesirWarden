@@ -6,6 +6,8 @@
 
 先恢复具有使用许可的完整 `Content`，包括 `Main.umap`、World Partition 外部 Actor、角色动作和 UI 依赖。公开仓库有意排除这些私人/第三方资产；仅拉取 Git 和 LFS 不足以恢复第一关。构建记录应保存代码提交、未提交改动，以及本地资产清单的 SHA256。
 
+营火的 `AS_SSH_Sit_Loop` 和 `AS_SSH_Sit_End` 由 C++ 默认软引用按需载入。首次包漏收这两个动画，导致开始游戏后回到菜单。`Config/DefaultEditor.ini` 的 `[AlwaysCookMaps]` 以完整包路径把它们加入 Cook；恢复工程仍需提供对应本地资产。
+
 资产清单、完整日志和包保存在 `Saved` 下，不进入公开仓库。证据索引只提交版本、结果、摘要哈希和相对路径。重试修复由 [PR #33](https://github.com/YYchainsAw/AesirWarden/pull/33) 提供；验收连续重试的包必须纳入该修复并记录实际提交。
 
 ## 构建
@@ -38,3 +40,5 @@ py Scripts/Project/verify_windows_baseline.py --package Saved/Builds/WindowsBT
 ## 证据
 
 保存 UAT 结果、资产清单、包文件 SHA256、运行日志与截图，并在 [BUILD-01](../06_Test_Doc/01_VerificationMatrix.md) 写明实际覆盖范围。失败时记录最先导致失败的错误和复现命令，修复后保留前后两份日志；不将尚未执行的正式检查改为通过。
+
+2026-11-16：修复后生成 44 个文件、约 8.65 GiB 的本地包，Cook 共 2,899 个包、0 错误。Win11 / RTX 4060 Laptop GPU / D3D12 上分别冷启动胜利和失败用例，验证结果页只创建一次，重试按钮取得焦点，两次目标 Boss Episode 均记录为 `BehaviorTree`。离屏结果截图仍偏暗，界面可读性留待实机检查。构建版本、包哈希和两次运行见[证据索引](../07_Release/Evidence/WindowsBTBaseline20261116.json)。
