@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "Engine/EngineBaseTypes.h"
 #include "TimerManager.h"
 #include "AesirCombatPrototypeGameMode.generated.h"
 
@@ -73,13 +74,16 @@ private:
 	void ResolvePendingMatchResult();
 	void StopMatchCombat();
 	bool RequestReload(bool bRetry);
+	void HandleMatchTravelFailure(UWorld* FailedWorld, ETravelFailure::Type FailureType, const FString& Error);
 	void DiscoverTaggedBoss();
+	void UnbindMatchDeaths();
 	void ClearMatchBindings();
 	TWeakObjectPtr<AActor> MatchBoss;
 	TWeakObjectPtr<UAesirHealthComponent> BossHealth;
 	TWeakObjectPtr<APawn> MatchPlayer;
 	TWeakObjectPtr<UAesirHealthComponent> PlayerHealth;
 	FTimerHandle ResultResolutionTimer;
+	FDelegateHandle TravelFailureHandle;
 	uint64 PendingResultFrame = 0;
 	bool bPendingPlayerDeath = false;
 	bool bPendingBossDeath = false;

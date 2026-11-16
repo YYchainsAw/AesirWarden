@@ -77,6 +77,7 @@ protected:
 
 private:
 	void StartPossessedBossPolicy();
+	void StopPossessedBossPolicy(EAesirBossEpisodeResult Result);
 	void ClearLevelStartBinding();
 
 	UFUNCTION()

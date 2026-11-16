@@ -13,6 +13,7 @@
 #include "BrainComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Framework/AesirCombatPrototypeGameMode.h"
 #include "Framework/Flow/AesirLevelFlowDirector.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
@@ -213,9 +214,14 @@ void AAesirBossAIController::StopBossForMatchResult(EAesirBossEpisodeResult Resu
 	if (bMatchCombatEnded) return;
 	bMatchCombatEnded = true;
 	ClearLevelStartBinding();
+	StopPossessedBossPolicy(Result);
+}
+
+void AAesirBossAIController::StopPossessedBossPolicy(EAesirBossEpisodeResult Result)
+{
 	if (IsValid(BossPolicyClientComponent)) BossPolicyClientComponent->Stop();
 	StopMovement();
-	if (GetBrainComponent()) GetBrainComponent()->StopLogic(TEXT("Match ended"));
+	if (GetBrainComponent()) GetBrainComponent()->StopLogic(TEXT("Boss encounter ended"));
 	EndBossEpisode(Result);
 	if (IsValid(BossRewardComponent)) BossRewardComponent->Shutdown();
 	ResetDecisionDebounce();
@@ -310,22 +316,15 @@ void AAesirBossAIController::OnPossess(APawn* InPawn)
 	if (IsValid(BossObservationComponent))
 		BossObservationComponent->InitializeForAvatar(InPawn);
 
-	// A placed boss can be beside the campfire before the flow director's BeginPlay.
-	// Wait for gameplay instead of starting BT, HTTP inference or an episode in the menu.
+	// Main waits for the objective encounter. Combat test maps without a
+	// flow director retain immediate startup.
 	for (TActorIterator<AAesirLevelFlowDirector> It(GetWorld()); It; ++It)
 	{
-		const EAesirLevelFlowState State = It->GetFlowState();
-		if (State == EAesirLevelFlowState::Uninitialized ||
-			State == EAesirLevelFlowState::MainMenu ||
-			State == EAesirLevelFlowState::OpeningCinematic)
-		{
-			bWaitingForLevelStart = true;
-			StartupFlowDirector = *It;
-			It->OnFlowStateChanged.AddUniqueDynamic(this,
-				&AAesirBossAIController::HandleLevelFlowStateChanged);
-			return;
-		}
-		break;
+		bWaitingForLevelStart = true;
+		StartupFlowDirector = *It;
+		It->OnFlowStateChanged.AddUniqueDynamic(this, &ThisClass::HandleLevelFlowStateChanged);
+		HandleLevelFlowStateChanged(EAesirLevelFlowState::Uninitialized, It->GetFlowState());
+		return;
 	}
 	StartPossessedBossPolicy();
 }
@@ -372,10 +371,24 @@ void AAesirBossAIController::StartPossessedBossPolicy()
 void AAesirBossAIController::HandleLevelFlowStateChanged(
 	EAesirLevelFlowState PreviousState, EAesirLevelFlowState NewState)
 {
-	if (!bWaitingForLevelStart || NewState != EAesirLevelFlowState::Exploration)
+	if (bMatchCombatEnded) return;
+	if (NewState != EAesirLevelFlowState::BossCombat)
+	{
+		if (!bWaitingForLevelStart)
+		{
+			bWaitingForLevelStart = true;
+			StopPossessedBossPolicy(EAesirBossEpisodeResult::Aborted);
+		}
 		return;
-	ClearLevelStartBinding();
+	}
+	const auto* Mode = GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>();
+	if (!bWaitingForLevelStart || !Mode || Mode->GetMatchBoss() != GetPawn())
+	{
+		return;
+	}
 	bWaitingForLevelStart = false;
+	ActivePolicySource = bUseReinforcementLearningPolicy
+		? EAesirBossPolicySource::ReinforcementLearning : DefaultPolicySource;
 	StartPossessedBossPolicy();
 }
 
@@ -411,5 +424,6 @@ void AAesirBossAIController::OnUnPossess()
 void AAesirBossAIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	ClearLevelStartBinding();
+	StopPossessedBossPolicy(EAesirBossEpisodeResult::Aborted);
 	Super::EndPlay(EndPlayReason);
 }

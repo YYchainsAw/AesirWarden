@@ -1,0 +1,116 @@
+{
+  "date": "2026-11-16",
+  "timezone": "Asia/Shanghai",
+  "issue": 7,
+  "base_pr": 32,
+  "source_base": "eff929eab13fa5b3bdc4cac50667911203205e00",
+  "branch": "fix/issue-7-match-retry",
+  "engine": "UE 5.8.4 CL58902052",
+  "editor_build": {
+    "path": "Saved/Verification/Retry/ScreenshotBuildFinal.log",
+    "sha256": "e70e9b72c6d07f1967a3b20fc24aa4dbc4293a6ef91819498a6b5dc96696511a"
+  },
+  "verified_files": [
+    {
+      "path": "Scripts/Boss/verify_match_results.py",
+      "sha256": "5cc4b0b654d78f79496428bb22cda1cb0bf74cb024416ebfd5fba733fa58152f",
+      "git_lf_sha256": "5cc4b0b654d78f79496428bb22cda1cb0bf74cb024416ebfd5fba733fa58152f"
+    },
+    {
+      "path": "Source/AesirWarden/Private/AI/Boss/AesirBossAIController.cpp",
+      "sha256": "dda167d8829c086a339a4edb239a2fd9423317f02ba953b5e0e1ade734e12097",
+      "git_lf_sha256": "1c4416868929c3a1ecca24d9d0b33af2886945c693dcf9dcd9796a785a3f7b8a"
+    },
+    {
+      "path": "Source/AesirWarden/Private/Framework/AesirCombatPrototypeGameMode.cpp",
+      "sha256": "bd370fd814e480fb98f652d4d66d895815707e2c5c9526f196685d5c1bb9f5eb",
+      "git_lf_sha256": "ccbfd862ec5233be79b91cfd42decbfdf1184fbb4cf4a6376b8e301411b22533"
+    },
+    {
+      "path": "Source/AesirWarden/Private/Framework/Flow/AesirLevelFlowDirector.cpp",
+      "sha256": "496ddd54c1261c643bafada31b0ee9165e82ab0b64f23fbc0e42a0b1c0f8f363",
+      "git_lf_sha256": "cdf2255ae17f5fb2d8463debd66da006cce5b5a7d57e11c8f87a1393697d10bc"
+    },
+    {
+      "path": "Source/AesirWarden/Private/Tests/AesirMainMatchSmoke.cpp",
+      "sha256": "c645a4212efa4051445bbc38ad8bdf82b5c5c3ee91bd725d62618a7eb8618461",
+      "git_lf_sha256": "c645a4212efa4051445bbc38ad8bdf82b5c5c3ee91bd725d62618a7eb8618461"
+    },
+    {
+      "path": "Source/AesirWarden/Private/Tests/AesirMainRetrySmoke.cpp",
+      "sha256": "425c274bc0195eeb884caca761f6893cedf1ce5ee66adb3f29839367c9ee9ae3",
+      "git_lf_sha256": "42cca2284a11b449d2bf5d5ca11104f8afc78eb3e5cfdb1cacdb5278a1b1a82d"
+    },
+    {
+      "path": "Source/AesirWarden/Public/AI/Boss/AesirBossAIController.h",
+      "sha256": "3efb4c09ec13dab7cfd8cd77e3e24fe7aa4729f5df1519600f7b58e9c117cbf6",
+      "git_lf_sha256": "7b3e191e36ae084f4332267b2081f0ed3145a6acfa1c4bb02295eea96c20d448"
+    },
+    {
+      "path": "Source/AesirWarden/Public/Framework/AesirCombatPrototypeGameMode.h",
+      "sha256": "5b8f44453d0a41797c2b8cd6acb19179b5a5e760e1e8c8eca0d1716432160a27",
+      "git_lf_sha256": "9953e5500d50459f4b9bb22754444deb20a0eac75e39c9f20c43b58f4cf49cde"
+    },
+    {
+      "path": "Source/AesirWarden/Public/Framework/Flow/AesirLevelFlowDirector.h",
+      "sha256": "90ee0bee6f30ce4f4831c9e0db5f38f382f69dc8e185952baf9cb0577e983d06",
+      "git_lf_sha256": "68c75779016c5e944044d7585a285ccd366f34da289f4d4068d85f5686029fd2"
+    }
+  ],
+  "retries": 2,
+  "defeats": 3,
+  "return_to_menu": true,
+  "restart_from_menu": true,
+  "campfire_spawn_ue_cm": "X=-2230.00, Y=-1600.00, Z=164.01",
+  "player_hp_after_reload": 150.0,
+  "boss_hp_after_reload": 500.0,
+  "retired_worlds_without_death_bindings": 3,
+  "old_cooldown_and_result_ui_after_reload": false,
+  "boss_episode_ids": [
+    "c928e4f0-4fb6-3add-589e-ada0a4416219",
+    "47496f34-43b0-70e9-4cd5-b19b71254072",
+    "dfee19ab-4782-9af7-56c0-afb836c66d66",
+    "c86b3f1d-4312-3f1a-c3db-72825f6dc13d"
+  ],
+  "screenshots": [
+    {
+      "path": "Saved/Verification/Retry/6B20060545B891A7733640949B91F5C7/Retry1.png",
+      "sha256": "06178283160e20c277ef030aafa5c4ac25d175fa8a9686b821b6efa8ee8d3a7f"
+    },
+    {
+      "path": "Saved/Verification/Retry/6B20060545B891A7733640949B91F5C7/Retry2.png",
+      "sha256": "0a09e4c82a0b85b6f85e1e5d1e5a2daabf6655178cb1e580f6e09c007f85018b"
+    },
+    {
+      "path": "Saved/Verification/Retry/6B20060545B891A7733640949B91F5C7/ReturnToMenu.png",
+      "sha256": "b8bc42dbcc448225f5d3fdcbf56831d9ececfba0d10bb1211876ac7480da0eba"
+    }
+  ],
+  "retry_log": {
+    "path": "Saved/Verification/Match/20261116T034604523109Z/Retry.log",
+    "sha256": "780fb3317efba972c70c112504e37227d82b4cb7f11ea9a2b2bb7d30209a146b"
+  },
+  "retry_report": {
+    "path": "Saved/Verification/Match/20261116T034604523109Z/summary.json",
+    "sha256": "48b85a81914c5a05645997846c3e0a871916d7cb64fc8d4d524d6bd5e234dfac"
+  },
+  "match_regression": {
+    "rules_passed": 6,
+    "main_victory": true,
+    "main_defeat": true,
+    "report": {
+      "path": "Saved/Verification/Match/20261116T034428761283Z/summary.json",
+      "sha256": "a98a762c3346ebddc76612c9d5a86aeb2a87daaa3a47623fbdaa1962ba78f4b5"
+    }
+  },
+  "scope": {
+    "initial_death_trigger": "GAS test health adjustment",
+    "travel_trigger": "authored result button click delegate",
+    "boss_entry": "native encounter entry",
+    "full_manual_traversal": false,
+    "inflight_ppo_npc_responses": false,
+    "induced_travel_and_recovery_failure": false,
+    "cooked_windows": false
+  },
+  "source_hash_note": "sha256 records working-tree bytes at verification; git_lf_sha256 normalizes CRLF to LF for checkout verification."
+}
