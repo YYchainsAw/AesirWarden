@@ -6,6 +6,8 @@
 #include "Abilities/AesirAttributeSet.h"
 #include "Tags/AesirGameplayTags.h"
 #include "Abilities/GameplayAbilityTypes.h"
+#include "Engine/World.h"
+#include "Framework/AesirCombatPrototypeGameMode.h"
 #include "GameFramework/Pawn.h"
 
 UAesirBossRewardComponent::UAesirBossRewardComponent()
@@ -214,7 +216,8 @@ void UAesirBossRewardComponent::HandleBossHealthChanged(
 			RewardSettings.BossDefeatedPenalty,
 			EAesirBossRewardReason::BossDefeated);
 
-		if (IsValid(TelemetryComponent))
+		const auto* Mode = GetWorld() ? GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>() : nullptr;
+		if (IsValid(TelemetryComponent) && (!Mode || Mode->GetMatchBoss() != Avatar.Get()))
 		{
 			TelemetryComponent->EndEpisode(
 				EAesirBossEpisodeResult::BossDefeat);
@@ -240,7 +243,8 @@ void UAesirBossRewardComponent::HandleTargetHealthChanged(
 			RewardSettings.TargetDefeatedReward,
 			EAesirBossRewardReason::TargetDefeated);
 
-		if (IsValid(TelemetryComponent))
+		const auto* Mode = GetWorld() ? GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>() : nullptr;
+		if (IsValid(TelemetryComponent) && (!Mode || !Mode->IsMatchPlayer(Target.Get())))
 		{
 			TelemetryComponent->EndEpisode(
 				EAesirBossEpisodeResult::BossVictory);

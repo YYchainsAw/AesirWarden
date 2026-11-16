@@ -20,6 +20,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "Framework/AesirCombatPrototypeGameMode.h"
 
 namespace
 {
@@ -300,6 +301,8 @@ bool UAesirCombatComponent::TryApplyGameplayDamage(
 	bool& bOutHitNegated)
 {
 	bOutHitNegated = false;
+	if (const auto* Mode = GetWorld() ? GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>() : nullptr;
+		Mode && Mode->GetMatchResult() != EAesirMatchResult::None) return true;
 
 	UAbilitySystemComponent* TargetASC =
 		UAbilitySystemBlueprintLibrary::
@@ -819,6 +822,8 @@ UAnimMontage* UAesirCombatComponent::GetCurrentMontage() const
 
 void UAesirCombatComponent::PlayAttack(EAesirAttackType AttackType, int32 ComboIndex)
 {
+	if (const auto* Mode = GetWorld() ? GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>() : nullptr;
+		Mode && Mode->GetMatchResult() != EAesirMatchResult::None) return;
 	const bool bWasAttacking = IsAttacking();
 	UAnimInstance* AnimInstance = GetOwnerAnimInstance();
 

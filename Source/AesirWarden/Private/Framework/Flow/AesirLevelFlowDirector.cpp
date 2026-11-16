@@ -2,6 +2,7 @@
 
 
 #include "Framework/Flow/AesirLevelFlowDirector.h"
+#include "Framework/AesirCombatPrototypeGameMode.h"
 #include "AesirWarden.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
@@ -84,6 +85,11 @@ void AAesirLevelFlowDirector::TryInitializeFlow()
 	}
 
 	bInitialized = true;
+	if (auto* Mode = GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>())
+	{
+		Mode->RegisterMatchPlayer(PlayerPawnRef.Get());
+		if (IsValid(PrimaryMatchBoss)) Mode->RegisterMatchBoss(PrimaryMatchBoss);
+	}
 	if (UAesirMainMenuWidget* Menu = Cast<UAesirMainMenuWidget>(MainMenuRef))
 	{
 		Menu->OnStartRequested.AddUniqueDynamic(this, &AAesirLevelFlowDirector::HandleStartRequested);
@@ -92,6 +98,11 @@ void AAesirLevelFlowDirector::TryInitializeFlow()
 	OnMainMenuCreated(MainMenuRef.Get());
 	if (!IsActorBeingDestroyed())
 	{
+		if (const auto* Mode = GetWorld()->GetAuthGameMode<AGameModeBase>();
+			Mode && UGameplayStatics::HasOption(Mode->OptionsString, TEXT("AesirRetry")))
+		{
+			bRetryPending = true;
+		}
 		EnterMainMenu();
 	}
 }
@@ -137,9 +148,9 @@ void AAesirLevelFlowDirector::PresentMainMenu()
 	PlayerControllerRef->SetShowMouseCursor(true);
 	PrepareMainMenuPresentation();
 	SetFlowState(EAesirLevelFlowState::MainMenu);
-	RefreshMenuStreamingState();
 	GetWorldTimerManager().SetTimer(MenuStreamingTimerHandle, this,
 		&AAesirLevelFlowDirector::RefreshMenuStreamingState, 0.1f, true);
+	RefreshMenuStreamingState();
 }
 
 bool AAesirLevelFlowDirector::IsStartupStreamingReady() const
@@ -173,6 +184,11 @@ void AAesirLevelFlowDirector::RefreshMenuStreamingState()
 			Menu->FocusDefaultAction();
 			bMenuFocusInitialized = true;
 		}
+	}
+	if (bRetryPending && bStartupStreamingReady)
+	{
+		bRetryPending = false;
+		if (RequestStartGame()) SkipOpeningCinematic();
 	}
 }
 
@@ -239,11 +255,12 @@ bool AAesirLevelFlowDirector::RequestStartGame()
 		return false;
 	}
 
-	RefreshMenuStreamingState();
+	bStartupStreamingReady = IsStartupStreamingReady();
 	if (!bStartupStreamingReady)
 	{
 		return false;
 	}
+	bRetryPending = false;
 	OpeningFailureStatus = FText::GetEmpty();
 	MainMenuRef->RemoveFromParent();
 	PlayerControllerRef->SetShowMouseCursor(false);
@@ -501,6 +518,36 @@ bool AAesirLevelFlowDirector::SkipOpeningCinematic()
 	// Stop and natural completion may both arrive; the handoff guard allows one transition.
 	BeginGameplayCameraHandoff();
 	return true;
+}
+
+bool AAesirLevelFlowDirector::BeginBossCombat(AActor* PrimaryHostile)
+{
+	if (!bInitialized || CurrentState != EAesirLevelFlowState::Exploration)
+	{
+		return false;
+	}
+
+	auto* Mode = GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>();
+	if (!Mode || !Mode->RegisterMatchBoss(PrimaryHostile))
+	{
+		return false;
+	}
+
+	SetFlowState(EAesirLevelFlowState::BossCombat);
+	return CurrentState == EAesirLevelFlowState::BossCombat;
+}
+
+void AAesirLevelFlowDirector::EndBossCombat(bool bReturnToExploration)
+{
+	if (!bReturnToExploration)
+	{
+		HideGameplayHUD();
+		SetFlowState(EAesirLevelFlowState::Results);
+	}
+	else if (CurrentState == EAesirLevelFlowState::BossCombat)
+	{
+		SetFlowState(EAesirLevelFlowState::Exploration);
+	}
 }
 
 void AAesirLevelFlowDirector::AcquireInputLocks()

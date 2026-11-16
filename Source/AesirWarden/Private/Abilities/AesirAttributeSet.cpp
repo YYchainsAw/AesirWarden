@@ -1,6 +1,8 @@
 #include "Abilities/AesirAttributeSet.h"
 
 #include "GameplayEffectExtension.h"
+#include "Engine/World.h"
+#include "Framework/AesirCombatPrototypeGameMode.h"
 
 UAesirAttributeSet::UAesirAttributeSet()
 {
@@ -33,7 +35,8 @@ void UAesirAttributeSet::PostGameplayEffectExecute(
 		const float LocalDamage = FMath::Max(GetDamage(), 0.0f);
 		SetDamage(0.0f);
 
-		if (LocalDamage > 0.0f)
+		const auto* Mode = GetWorld() ? GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>() : nullptr;
+		if (LocalDamage > 0.0f && (!Mode || Mode->GetMatchResult() == EAesirMatchResult::None))
 		{
 			SetHealth(FMath::Clamp(
 				GetHealth() - LocalDamage,
