@@ -16,6 +16,7 @@
 | 验证 DarkRuins 地图的性能与分区加载 | [完整测试流程与控制台命令](06_Test_Doc/03_DarkRuinsPerformanceTest.md) · [实测结果、迁移与优化交接](06_Test_Doc/04_DarkRuinsPerformanceAndMigrationHandoff.md) |
 | 接入 RL Boss 或做对照实验 | [Boss RL 入口](08_RL_Research/README.md) |
 | 设置 Main 的目标 Boss、验证胜败与结果页 | [第一关目标 Boss 与结果页](05_Development_Guide/17_MatchResultSetup.md) |
+| 构建 Windows BT 包、验证包内胜败流程 | [Windows BT 基线构建与验证](05_Development_Guide/18_WindowsBTBaseline.md) |
 | 查看课程 Word、说明对象职责或检查需求与 UML | [Word需求文档修订稿](09_Course_Analysis/Word/AesirWarden需求分析文档.docx) · [课程分析与基线](09_Course_Analysis/README.md) · [重试对象分析](09_Course_Analysis/01_RetryObjectAnalysis.md) · [需求追踪](09_Course_Analysis/02_Traceability.md) |
 
 ## 配套资料

@@ -22,7 +22,7 @@ def sha256(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--package", type=Path, default=ROOT / "Saved/Builds/WindowsBT/Windows",
+    parser.add_argument("--package", type=Path, default=ROOT / "Saved/Builds/WindowsBT",
                         help="Staged Windows directory containing AesirWarden/Binaries/Win64.")
     parser.add_argument("--only", choices=("Victory", "Defeat"))
     args = parser.parse_args()

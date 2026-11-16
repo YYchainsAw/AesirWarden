@@ -28,7 +28,7 @@ py Scripts/Project/build_windows_baseline.py --engine 'D:/Program Files/Epic/UE_
 Development 包可运行 `Aesir.Match.Smoke Victory|Defeat`。入口只在启用开发测试的非 Shipping 构建编译，普通启动不会触发测试。运行：
 
 ```powershell
-py Scripts/Project/verify_windows_baseline.py --package Saved/Builds/WindowsBT/Windows
+py Scripts/Project/verify_windows_baseline.py --package Saved/Builds/WindowsBT
 ```
 
 脚本执行包内真正的 Game 可执行文件，分别冷启动 Main，验证菜单开始、原生 Boss 入场、一次性胜败判定、结果页焦点和终局后伤害保护，并收集退出码、PASS/FAIL 标记及日志哈希。截图路径以游戏日志为准，通常位于包自身的 `Saved/Verification/MainMatch`。NPC 连接被限定到不可用的本机测试端口，子进程不继承 Bearer 凭据。
