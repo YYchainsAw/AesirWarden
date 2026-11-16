@@ -7,6 +7,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Camera/CameraActor.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/WorldPartitionStreamingSourceComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -96,13 +97,46 @@ void AAesirLevelFlowDirector::TryInitializeFlow()
 		Menu->OnQuitRequested.AddUniqueDynamic(this, &AAesirLevelFlowDirector::HandleQuitRequested);
 	}
 	OnMainMenuCreated(MainMenuRef.Get());
-	if (!IsActorBeingDestroyed())
+	if (IsActorBeingDestroyed())
 	{
-		if (const auto* Mode = GetWorld()->GetAuthGameMode<AGameModeBase>();
-			Mode && UGameplayStatics::HasOption(Mode->OptionsString, TEXT("AesirRetry")))
-		{
-			bRetryPending = true;
-		}
+		return;
+	}
+	const auto* Mode = GetWorld()->GetAuthGameMode<AGameModeBase>();
+	if (!Mode || UGameplayStatics::ParseOption(Mode->OptionsString, TEXT("AesirRetry")) != TEXT("1"))
+	{
+		EnterMainMenu();
+		return;
+	}
+
+	bRetryPending = true;
+	InitializationStartedAt = GetWorld()->GetTimeSeconds();
+	AcquireInputLocks();
+	PlayerControllerRef->SetInputMode(FInputModeUIOnly());
+	PlayerControllerRef->FlushPressedKeys();
+	PlayerControllerRef->SetShowMouseCursor(false);
+	GetWorldTimerManager().SetTimer(RetryStreamingTimerHandle, this, &ThisClass::TryCompleteRetry, 0.1f, true);
+	TryCompleteRetry();
+}
+
+void AAesirLevelFlowDirector::TryCompleteRetry()
+{
+	if (!bRetryPending || CurrentState != EAesirLevelFlowState::Uninitialized || IsActorBeingDestroyed())
+	{
+		GetWorldTimerManager().ClearTimer(RetryStreamingTimerHandle);
+		return;
+	}
+	HideGameplayHUD();
+	if (EnterExploration())
+	{
+		UE_LOG(LogAesirWarden, Display, TEXT("Level flow: retry restored gameplay at the level start."));
+		return;
+	}
+	if (GetWorld()->GetTimeSeconds() - InitializationStartedAt >= GameplayStreamingTimeout)
+	{
+		bRetryPending = false;
+		GetWorldTimerManager().ClearTimer(RetryStreamingTimerHandle);
+		OpeningFailureStatus = NSLOCTEXT("AesirMenu", "RetryStreamingTimedOut", "重试准备超时，请从菜单重新开始");
+		UE_LOG(LogAesirWarden, Warning, TEXT("Level flow: retry could not restore gameplay; presenting the start menu."));
 		EnterMainMenu();
 	}
 }
@@ -122,7 +156,7 @@ bool AAesirLevelFlowDirector::RefreshPlayerReferences()
 bool AAesirLevelFlowDirector::EnterMainMenu()
 {
 	// Returning from combat will require a full level reset, rather than reusing stale combat state.
-	if (!bInitialized || !bOwnsLevelFlow || CurrentState != EAesirLevelFlowState::Uninitialized ||
+	if (!bInitialized || !bOwnsLevelFlow || bRetryPending || CurrentState != EAesirLevelFlowState::Uninitialized ||
 		!RefreshPlayerReferences() || !IsValid(MenuCamera) || !IsValid(MainMenuRef))
 	{
 		return false;
@@ -184,11 +218,6 @@ void AAesirLevelFlowDirector::RefreshMenuStreamingState()
 			Menu->FocusDefaultAction();
 			bMenuFocusInitialized = true;
 		}
-	}
-	if (bRetryPending && bStartupStreamingReady)
-	{
-		bRetryPending = false;
-		if (RequestStartGame()) SkipOpeningCinematic();
 	}
 }
 
@@ -260,7 +289,6 @@ bool AAesirLevelFlowDirector::RequestStartGame()
 	{
 		return false;
 	}
-	bRetryPending = false;
 	OpeningFailureStatus = FText::GetEmpty();
 	MainMenuRef->RemoveFromParent();
 	PlayerControllerRef->SetShowMouseCursor(false);
@@ -472,7 +500,8 @@ void AAesirLevelFlowDirector::CompleteGameplayCameraHandoff()
 
 bool AAesirLevelFlowDirector::EnterExploration()
 {
-	if (!bInitialized || CurrentState != EAesirLevelFlowState::OpeningCinematic || bOpeningPresentationPending ||
+	const bool bRetryHandoff = bRetryPending && CurrentState == EAesirLevelFlowState::Uninitialized;
+	if (!bInitialized || (!bRetryHandoff && CurrentState != EAesirLevelFlowState::OpeningCinematic) || bOpeningPresentationPending ||
 		!IsGameplayCameraReady() || !RefreshPlayerReferences() || !IsStartupStreamingReady())
 	{
 		return false;
@@ -480,6 +509,8 @@ bool AAesirLevelFlowDirector::EnterExploration()
 
 	GetWorldTimerManager().ClearTimer(CameraHandoffTimerHandle);
 	GetWorldTimerManager().ClearTimer(MenuStreamingTimerHandle);
+	GetWorldTimerManager().ClearTimer(RetryStreamingTimerHandle);
+	bRetryPending = false;
 	RestoreGameplayHUD();
 	UnbindOpeningSequence();
 	if (IsValid(ActiveOpeningPlayer) && (ActiveOpeningPlayer->IsPlaying() || ActiveOpeningPlayer->IsPaused()))
@@ -493,6 +524,10 @@ bool AAesirLevelFlowDirector::EnterExploration()
 	PlayerControllerRef->SetInputMode(FInputModeGameOnly());
 	PlayerControllerRef->FlushPressedKeys();
 	PlayerControllerRef->SetShowMouseCursor(false);
+	if (bRetryHandoff && PlayerControllerRef->PlayerCameraManager)
+	{
+		PlayerControllerRef->PlayerCameraManager->StartCameraFade(1.0f, 0.0f, 0.25f, FLinearColor::Black, false, false);
+	}
 	StartupStreamingSource->DisableStreamingSource();
 	bWaitingForGameplayStreaming = false;
 	SetFlowState(EAesirLevelFlowState::Exploration);
@@ -610,6 +645,7 @@ void AAesirLevelFlowDirector::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	GetWorldTimerManager().ClearTimer(InitializationTimerHandle);
 	GetWorldTimerManager().ClearTimer(CameraHandoffTimerHandle);
 	GetWorldTimerManager().ClearTimer(MenuStreamingTimerHandle);
+	GetWorldTimerManager().ClearTimer(RetryStreamingTimerHandle);
 	RestoreGameplayHUD();
 	UnbindOpeningSequence();
 	if (IsValid(ActiveOpeningPlayer))

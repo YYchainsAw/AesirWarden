@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--engine", type=Path, default=Path("D:/Program Files/Epic/UE_5.8"))
-    parser.add_argument("--only", choices=("rules", "Victory", "Defeat"))
+    parser.add_argument("--only", choices=("rules", "Victory", "Defeat", "Retry"))
     args = parser.parse_args()
     binaries = args.engine / "Engine/Binaries/Win64"
     output = ROOT / "Saved/Verification/Match" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -35,8 +35,9 @@ def main():
             command += ["-NullRHI", "-ExecCmds=Automation RunTests Aesir.Match",
                         "-TestExit=Automation Test Queue Empty", f"-ReportExportPath={output / 'Automation'}"]
         else:
+            smoke = "Aesir.Match.RetrySmoke" if case == "Retry" else f"Aesir.Match.Smoke {case}"
             command += ["-game", "-RenderOffscreen", "-windowed", "-ForceRes", "-ResX=1920", "-ResY=1080",
-                        f"-ExecCmds=DisableAllScreenMessages,Aesir.Match.Smoke {case}"]
+                        f"-ExecCmds=DisableAllScreenMessages,{smoke}"]
         try:
             with (output / f"{case}.console.log").open("wb") as console:
                 exit_code = subprocess.run(command, cwd=ROOT, env=env, stdout=console,
@@ -54,6 +55,10 @@ def main():
                                    for test in automation.get("tests", [])]
                 result["passed"] = (exit_code == 0 and bool(result["tests"])
                                     and all(t["state"] == "Success" for t in result["tests"]))
+        elif case == "Retry":
+            result["markers"] = [line for line in text.splitlines() if "MATCH_RETRY_SMOKE_" in line]
+            result["passed"] = (exit_code == 0 and "MATCH_RETRY_SMOKE_PASS" in text
+                                and "MATCH_RETRY_SMOKE_FAIL" not in text)
         else:
             result["markers"] = [line for line in text.splitlines() if "MATCH_MAIN_SMOKE_" in line]
             result["passed"] = exit_code == 0 and f"{marker} case={case}" in text and "MATCH_MAIN_SMOKE_FAIL" not in text

@@ -117,7 +117,10 @@ private:
 		AAesirBossAIController* BossAI = BossPawn ? Cast<AAesirBossAIController>(BossPawn->GetController()) : nullptr;
 		if (!IsValid(BossAI)) { return true; }
 		const UAesirBossTelemetryComponent* Telemetry = BossAI->GetBossTelemetryComponent();
-		if (!Telemetry || !Telemetry->IsEpisodeActive()) { return true; }
+		if (!Telemetry || Telemetry->IsEpisodeActive())
+		{
+			return Finish(TEXT("Boss telemetry must remain dormant until the encounter starts."));
+		}
 
 		AActor* Loser = Expected == EAesirMatchResult::Victory ? Boss : static_cast<AActor*>(Controller->GetPawn());
 		UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Loser);
@@ -136,7 +139,7 @@ private:
 		BossController = BossAI;
 		BossName = Boss->GetPathName();
 		EpisodeId = Telemetry->GetEpisodeSummary().EpisodeId;
-		if (EpisodeId.IsEmpty())
+		if (!Telemetry->IsEpisodeActive() || EpisodeId.IsEmpty())
 		{
 			return Finish(TEXT("The active Boss episode has no identity."));
 		}

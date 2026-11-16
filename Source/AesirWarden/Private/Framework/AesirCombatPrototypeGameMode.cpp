@@ -10,6 +10,7 @@
 #include "Characters/Enemy/AesirEnemyCharacter.h"
 #include "Combat/AesirCombatComponent.h"
 #include "Combat/AesirHealthComponent.h"
+#include "Engine/Engine.h"
 #include "EngineUtils.h"
 #include "Framework/AesirCombatPrototypePlayerController.h"
 #include "Framework/Flow/AesirLevelFlowDirector.h"
@@ -17,6 +18,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Misc/PackageName.h"
 #include "TimerManager.h"
 
 AAesirCombatPrototypeGameMode::AAesirCombatPrototypeGameMode() {}
@@ -175,6 +177,7 @@ void AAesirCombatPrototypeGameMode::FinishCombat(EAesirMatchResult NewResult)
 	if (MatchResult != EAesirMatchResult::None || NewResult == EAesirMatchResult::None) return;
 	MatchResult = NewResult; // Set the terminal guard before cancellation can dispatch callbacks.
 	GetWorldTimerManager().ClearTimer(BossEncounterTimer);
+	UnbindMatchDeaths();
 	StopMatchCombat();
 	for (TActorIterator<AAesirLevelFlowDirector> It(GetWorld()); It; ++It) { It->EndBossCombat(false); break; }
 	UE_LOG(LogAesirWarden, Display, TEXT("Match ended once: result=%s boss=%s frame=%llu"),
@@ -188,12 +191,29 @@ void AAesirCombatPrototypeGameMode::FinishCombat(EAesirMatchResult NewResult)
 bool AAesirCombatPrototypeGameMode::RequestReload(bool bRetry)
 {
 	if (MatchResult == EAesirMatchResult::None || bTravelRequested) return false;
+	UWorld* World = GetWorld();
+	if (!World || !GEngine) return false;
+	const FString Level = UWorld::RemovePIEPrefix(World->GetOutermost()->GetName());
+	if (!FPackageName::IsValidLongPackageName(Level) || !FPackageName::DoesPackageExist(Level))
+	{
+		UE_LOG(LogAesirWarden, Warning, TEXT("Match reload: current map package %s is unavailable."), *Level);
+		return false;
+	}
 	bTravelRequested = true;
-	const FString Level = UGameplayStatics::GetCurrentLevelName(this, true);
-	if (Level.IsEmpty()) { bTravelRequested = false; return false; }
+	TravelFailureHandle = GEngine->OnTravelFailure().AddUObject(this, &ThisClass::HandleMatchTravelFailure);
 	UGameplayStatics::SetGamePaused(this, false);
 	UGameplayStatics::OpenLevel(this, FName(*Level), true, bRetry ? TEXT("AesirRetry=1") : TEXT(""));
 	return true;
+}
+
+void AAesirCombatPrototypeGameMode::HandleMatchTravelFailure(
+	UWorld* FailedWorld, ETravelFailure::Type FailureType, const FString& Error)
+{
+	if (FailedWorld != GetWorld() || !bTravelRequested) return;
+	bTravelRequested = false;
+	GEngine->OnTravelFailure().Remove(TravelFailureHandle);
+	TravelFailureHandle.Reset();
+	UE_LOG(LogAesirWarden, Warning, TEXT("Match reload failed (%d): %s"), static_cast<int32>(FailureType), *Error);
 }
 
 bool AAesirCombatPrototypeGameMode::RequestRetryMatch() { return RequestReload(true); }
@@ -206,15 +226,25 @@ bool AAesirCombatPrototypeGameMode::RequestQuitMatch()
 	return true;
 }
 
+void AAesirCombatPrototypeGameMode::UnbindMatchDeaths()
+{
+	if (auto* Health = PlayerHealth.Get(true)) Health->OnDeath.RemoveDynamic(this, &ThisClass::HandlePlayerDeath);
+	if (auto* Health = BossHealth.Get(true)) Health->OnDeath.RemoveDynamic(this, &ThisClass::HandleEnemyDeath);
+}
+
 void AAesirCombatPrototypeGameMode::ClearMatchBindings()
 {
-	if (auto* Health = PlayerHealth.Get()) Health->OnDeath.RemoveDynamic(this, &ThisClass::HandlePlayerDeath);
-	if (auto* Health = BossHealth.Get()) Health->OnDeath.RemoveDynamic(this, &ThisClass::HandleEnemyDeath);
+	UnbindMatchDeaths();
 	PlayerHealth.Reset(); BossHealth.Reset(); MatchPlayer.Reset(); MatchBoss.Reset();
 }
 
 void AAesirCombatPrototypeGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (GEngine && TravelFailureHandle.IsValid())
+	{
+		GEngine->OnTravelFailure().Remove(TravelFailureHandle);
+		TravelFailureHandle.Reset();
+	}
 	GetWorldTimerManager().ClearTimer(BossEncounterTimer);
 	GetWorldTimerManager().ClearTimer(ResultResolutionTimer);
 	ClearMatchBindings();

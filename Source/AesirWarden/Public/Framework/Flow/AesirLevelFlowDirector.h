@@ -139,6 +139,7 @@ private:
 	void TryInitializeFlow();
 	void RecoverMainMenuAfterOpeningFailure();
 	void RefreshMenuStreamingState();
+	void TryCompleteRetry();
 	bool IsStartupStreamingReady() const;
 	void PresentMainMenu();
 	void HideGameplayHUD();
@@ -169,6 +170,7 @@ private:
 	FTimerHandle InitializationTimerHandle;
 	FTimerHandle CameraHandoffTimerHandle;
 	FTimerHandle MenuStreamingTimerHandle;
+	FTimerHandle RetryStreamingTimerHandle;
 	double InitializationStartedAt = 0.0;
 	double GameplayStreamingStartedAt = 0.0;
 	bool bInitialized = false;
