@@ -1,10 +1,10 @@
 # Windows发布检查
 
-> 检查设计已更新；本次未打包或运行，以下均未执行。BT基线先覆盖完整流程，PPO/NPC启用后补相应检查。
+> Windows BT 首轮构建和包内验证按[执行说明](../05_Development_Guide/18_WindowsBTBaseline.md)记录。下列正式验收条件仍逐项保留，构建成功不等于完成游玩验收。
 
 ## 构建前
 
-- [ ] 确认入口地图/GameMode/输入上下文与Windows配置；当前默认地图为 `/Game/Aesir/Maps/L_OpenWorld`。
+- [ ] 确认入口地图/GameMode/输入上下文与Windows配置；当前默认地图为 `/Game/Main.Main`，Cook 参数使用 `/Game/Main`。
 - [ ] 记录代码、完整资产快照、构建和依赖；PPO版本另记模型/哈希、契约、服务版本及启动方式，错误材料不能作正式部署。
 - [ ] 统一NPC服务端口与UE配置，记录旧/新协议实际使用路径及当前游戏/角色/能力目录；外部LLM按BR-NPC-06说明数据外发和保留范围。
 - [ ] 按[部署说明](../02_Design_Doc/TDD/06_Deployment.md)准备随包Boss程序/模型/运行依赖、可信版本清单和回滚；正式NPC使用可配置HTTPS与玩家凭据，确认旧无作用域接口和调试入口未公网开放。
