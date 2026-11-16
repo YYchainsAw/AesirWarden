@@ -1,6 +1,6 @@
 // Copyright (c) 2026 YYchainsAw. All rights reserved.
 
-#if WITH_EDITOR && WITH_DEV_AUTOMATION_TESTS
+#if !UE_BUILD_SHIPPING && WITH_DEV_AUTOMATION_TESTS
 
 #include "AesirWarden.h"
 #include "Abilities/AesirAttributeSet.h"
@@ -311,7 +311,7 @@ FAutoConsoleCommandWithWorldAndArgs RunCommand(
 	{
 		if (GIsEditor || !World || World->WorldType != EWorldType::Game)
 		{
-			UE_LOG(LogAesirWarden, Error, TEXT("MATCH_MAIN_SMOKE_FAIL: use a standalone UnrealEditor /Game/Main -game process."));
+			UE_LOG(LogAesirWarden, Error, TEXT("MATCH_MAIN_SMOKE_FAIL: use standalone Main in an Editor -game process or a Development package."));
 			return;
 		}
 		if (ActiveRun && !ActiveRun->IsFinished())
