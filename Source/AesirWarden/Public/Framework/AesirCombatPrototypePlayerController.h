@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "Framework/Flow/AesirLevelFlowTypes.h"
+#include "Framework/AesirCombatPrototypeGameMode.h"
 #include "AesirCombatPrototypePlayerController.generated.h"
 
 
@@ -14,6 +15,7 @@ class UInputAction;
 class AAesirLevelFlowDirector;
 class UAesirHealthComponent;
 class IInputProcessor;
+class UAesirCombatResultWidget;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -29,6 +31,13 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "UI|Companion Chat")
 	void CloseCompanionChat();
+
+	/** Reuse the Blueprint-created result page, or create its native fallback. */
+	UFUNCTION(BlueprintCallable, Category = "Aesir|Match")
+	bool PresentCombatResult(EAesirMatchResult Result);
+
+	UFUNCTION(BlueprintPure, Category = "Aesir|Match")
+	UAesirCombatResultWidget* GetCombatResultWidget() const { return CombatResultWidget; }
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Companion Chat")
@@ -92,4 +101,19 @@ private:
 	TWeakObjectPtr<UAesirHealthComponent> ChatPawnHealth;
 	bool bOwnsChatInputLocks = false;
 	TSharedPtr<IInputProcessor> ChatInputProcessor;
+
+	UFUNCTION()
+	void HandleResultRetry();
+	UFUNCTION()
+	void HandleResultReturnToMenu();
+	UFUNCTION()
+	void HandleResultQuit();
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAesirCombatResultWidget> CombatResultWidget;
+	bool bOwnsResultInputLocks = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Match")
+	TSoftClassPtr<UAesirCombatResultWidget> CombatResultWidgetClass = TSoftClassPtr<UAesirCombatResultWidget>(
+		FSoftObjectPath(TEXT("/Game/Aesir/UI/Results/WBP_CombatResult.WBP_CombatResult_C")));
 };

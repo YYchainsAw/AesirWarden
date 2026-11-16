@@ -1,0 +1,110 @@
+{
+  "date": "2026-11-16",
+  "timezone": "Asia/Shanghai",
+  "issue": 15,
+  "base": "f0c60c331f822a0fff9271a85603b32bc12dadff",
+  "branch": "fix/issue-15-match-results",
+  "engine": "UE 5.8.4 CL58902052",
+  "build": {
+    "target": "AesirWardenEditor Win64 Development",
+    "result": "Succeeded",
+    "actions": 19,
+    "duration_seconds": 93.05
+  },
+  "runner": "py -3.11 Scripts/Boss/verify_match_results.py",
+  "rules": [
+    {
+      "fullTestPath": "Aesir.Match.Rules.ObjectiveVictory",
+      "state": "Success",
+      "warnings": 3,
+      "errors": 0
+    },
+    {
+      "fullTestPath": "Aesir.Match.Rules.OrdinaryEnemyIgnored",
+      "state": "Success",
+      "warnings": 2,
+      "errors": 0
+    },
+    {
+      "fullTestPath": "Aesir.Match.Rules.PlayerDefeat",
+      "state": "Success",
+      "warnings": 2,
+      "errors": 0
+    },
+    {
+      "fullTestPath": "Aesir.Match.Rules.ReplaceDynamicObjective",
+      "state": "Success",
+      "warnings": 2,
+      "errors": 0
+    },
+    {
+      "fullTestPath": "Aesir.Match.Rules.SimultaneousBossFirst",
+      "state": "Success",
+      "warnings": 2,
+      "errors": 0
+    },
+    {
+      "fullTestPath": "Aesir.Match.Rules.SimultaneousPlayerFirst",
+      "state": "Success",
+      "warnings": 2,
+      "errors": 0
+    }
+  ],
+  "main": {
+    "Victory": {
+      "result": "Success",
+      "result_events": 1,
+      "viewport_count": 1,
+      "retry_focused": true,
+      "episode_id": "d93ae8a9-4aae-a588-e35b-1585fb471ab5",
+      "screenshot": "Saved/Verification/MainMatch/Victory-1AEAE9AB4EBBC6C47593D28AEEBB1A2C/Result.png",
+      "screenshot_sha256": "a7183f8ea3c7fa6c04eb6d12bf4df5127008a232ec900cd2e6f0477c64e4b227",
+      "log": "Saved/Verification/Match/20261116T030510223331Z/Victory.log"
+    },
+    "Defeat": {
+      "result": "Success",
+      "result_events": 1,
+      "viewport_count": 1,
+      "retry_focused": true,
+      "episode_id": "acec88b9-4187-5520-05e1-10b3050b1c90",
+      "screenshot": "Saved/Verification/MainMatch/Defeat-1F7E7C5A42FEBD0BB681E385F6A6279B/Result.png",
+      "screenshot_sha256": "5dc0fef08512b02b497aff5b81a00890451050abd120fea77c6983285be3c595",
+      "log": "Saved/Verification/Match/20261116T030510223331Z/Defeat.log"
+    }
+  },
+  "raw_report": "Saved/Verification/Match/20261116T030510223331Z/summary.json",
+  "main_game_mode_sha256": "36deef0316581bb7e0418779ffb5e65134140e52e6df55038ac1f3c4819b48d7",
+  "main_player_controller_sha256": "e65431356ee21101add1e458ef5fd9fad6a29a8dbbd5e7bdeaa3750fde0b8567",
+  "verified_file_sha256": {
+    "Content/Aesir/UI/Results/WBP_CombatResult.uasset": "bcda9c24aa056f99b4df10bfe1ce5b12626be01b69a1658779d08c3829f3c366",
+    "Scripts/Boss/verify_match_results.py": "0bc0b1e6995be396107a254838854084fda0672613a088e7366197cbcff5f2e8",
+    "Scripts/Editor/setup_main_match_boss.py": "7ee4b7aa1453a5ac019334402f69042d27805900ebdcdc73d2ea989729913b83",
+    "Scripts/Editor/setup_match_results.py": "10b219cbce1478b669169070a5318e0592bfd8369cecd1f893064eeab43c84fc",
+    "Source/AesirWarden/Private/AI/Boss/AesirBossAIController.cpp": "a80707240f1b304717d37676c2eb7b6b58068e718a602e5a143130a4d554a895",
+    "Source/AesirWarden/Private/AI/Boss/AesirBossRewardComponent.cpp": "4e2e609e3cd683edce298113fef7eca3e2e59a937b0c5589aab812f7334b180b",
+    "Source/AesirWarden/Private/Abilities/AesirAttributeSet.cpp": "22c1aac6a962c54f255a52308c7de36dcafa040c45196231b11248a36e109488",
+    "Source/AesirWarden/Private/Combat/AesirCombatComponent.cpp": "1369c1ae25f70fc70d345a759439fcd637b3369b6caa606c33d60128f98ef94c",
+    "Source/AesirWarden/Private/Editor/AesirMatchResultEditorLibrary.cpp": "9ac45700dffe7ee82ef2c0799fdaf0ca3dbd3ab3ba0c354c459b25995303b47f",
+    "Source/AesirWarden/Private/Framework/AesirCombatPrototypeGameMode.cpp": "1e6e21933d4d58f176f846d7971ee196422c9fc43c620081055720fa74e34968",
+    "Source/AesirWarden/Private/Framework/AesirCombatPrototypePlayerController.cpp": "004c07ec402f5b05558c452bb7bc94cc8797b93e5c46527b92ca6be6bd4ca138",
+    "Source/AesirWarden/Private/Framework/Flow/AesirLevelFlowDirector.cpp": "4e80b4769eba9275b081cfe48ba97c51d958bd3d9876eb079aad509c65c0efe6",
+    "Source/AesirWarden/Private/Tests/AesirMainMatchSmoke.cpp": "c74da808a5e1cccda662157f5f4a3917285e14b73fa26f33efa242ecc7323be7",
+    "Source/AesirWarden/Private/Tests/AesirMatchResultTests.cpp": "ec1102795d4aad0f891798988e86dde8f01a182d592b48303fead658591054fe",
+    "Source/AesirWarden/Private/Tests/AesirMatchTestGameMode.h": "cd60e75ab3808267b4fcce649fd01daac2170cbfc4f47cbcc4d6b01f48d76c0e",
+    "Source/AesirWarden/Private/UI/AesirCombatResultWidget.cpp": "0d86ed32cd74a9809a7fee5729eca948b11c0fef77473f8d6fafb291b11a1217",
+    "Source/AesirWarden/Public/AI/Boss/AesirBossAIController.h": "4bcd49be2b17753fc67c4bb4aeffd31a2809ae4d9b912c459f5882c04b73c768",
+    "Source/AesirWarden/Public/Editor/AesirMatchResultEditorLibrary.h": "27a802d5dc27ca34a8c4e97a433032561283b3bee582453b997f04150e426912",
+    "Source/AesirWarden/Public/Framework/AesirCombatPrototypeGameMode.h": "adbfc6eb2118b8f5551b649ac30c67b483b8fc9f8a02766f1f04813072cd1287",
+    "Source/AesirWarden/Public/Framework/AesirCombatPrototypePlayerController.h": "3577f878e0649a1ec517fdd416bed24558c48ac1bbdc661bf067ec534b8b0f35",
+    "Source/AesirWarden/Public/Framework/Flow/AesirLevelFlowDirector.h": "e51cbfb4cf8eb98b03d3467a8ab1db6419d7dbb183a7ca410c75b1f02f86f92c",
+    "Source/AesirWarden/Public/UI/AesirCombatResultWidget.h": "c95cecf00f6a3f25f7320da9057c0fa81e2617b332716dd1d508faae414ff06a"
+  },
+  "scope": {
+    "npc_disabled": true,
+    "death_trigger": "GAS test health adjustment",
+    "late_gas_damage_ignored": true,
+    "manual_full_fight": false,
+    "button_travel_cycles": false,
+    "cooked_windows": false
+  }
+}

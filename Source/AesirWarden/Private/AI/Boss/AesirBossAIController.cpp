@@ -10,6 +10,7 @@
 #include "AI/Boss/AesirBossRewardComponent.h"
 #include "AI/Boss/AesirBossTelemetryComponent.h"
 #include "BehaviorTree/BehaviorTree.h"
+#include "BrainComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Framework/Flow/AesirLevelFlowDirector.h"
@@ -102,7 +103,7 @@ FAesirBossActionOutcome AAesirBossAIController::ExecuteBossDecisionInternal(
 	float PolicyEvaluationMilliseconds,
 	const FAesirBossObservation& Observation)
 {
-	if (bWaitingForLevelStart)
+	if (bWaitingForLevelStart || bMatchCombatEnded)
 	{
 		FAesirBossActionOutcome Outcome;
 		Outcome.Action = Action;
@@ -176,7 +177,7 @@ FAesirBossActionOutcome AAesirBossAIController::ExecuteBossDecisionInternal(
 void AAesirBossAIController::ActivateBehaviorTreeFallback(
 	const FString& Reason)
 {
-	if (bWaitingForLevelStart)
+	if (bWaitingForLevelStart || bMatchCombatEnded)
 		return;
 	if (ActivePolicySource == EAesirBossPolicySource::Fallback)
 		return;
@@ -205,6 +206,19 @@ void AAesirBossAIController::ActivateBehaviorTreeFallback(
 	}
 	if (IsValid(BossBehaviorTree))
 		RunBehaviorTree(BossBehaviorTree);
+}
+
+void AAesirBossAIController::StopBossForMatchResult(EAesirBossEpisodeResult Result)
+{
+	if (bMatchCombatEnded) return;
+	bMatchCombatEnded = true;
+	ClearLevelStartBinding();
+	if (IsValid(BossPolicyClientComponent)) BossPolicyClientComponent->Stop();
+	StopMovement();
+	if (GetBrainComponent()) GetBrainComponent()->StopLogic(TEXT("Match ended"));
+	EndBossEpisode(Result);
+	if (IsValid(BossRewardComponent)) BossRewardComponent->Shutdown();
+	ResetDecisionDebounce();
 }
 
 bool AAesirBossAIController::ShouldSuppressRepeatedDecision(
@@ -258,7 +272,7 @@ FString AAesirBossAIController::StartBossEpisode(
 	EAesirBossPolicySource PolicySource,
 	const FString& EpisodeId)
 {
-	if (bWaitingForLevelStart || !IsValid(BossTelemetryComponent))
+	if (bWaitingForLevelStart || bMatchCombatEnded || !IsValid(BossTelemetryComponent))
 		return FString();
 
 	const FString StartedEpisodeId =
@@ -285,6 +299,7 @@ void AAesirBossAIController::OnPossess(APawn* InPawn)
 	Super::OnPossess(InPawn);
 	ClearLevelStartBinding();
 	bWaitingForLevelStart = false;
+	bMatchCombatEnded = false;
 	ResetDecisionDebounce();
 	ActivePolicySource = bUseReinforcementLearningPolicy
 		? EAesirBossPolicySource::ReinforcementLearning

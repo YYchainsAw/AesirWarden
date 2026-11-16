@@ -67,6 +67,8 @@ public:
 		EAesirBossEpisodeResult Result);
 
 	void ActivateBehaviorTreeFallback(const FString& Reason);
+	/** Terminal match boundary: no new policy request, action or telemetry segment. */
+	void StopBossForMatchResult(EAesirBossEpisodeResult Result);
 	
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
@@ -145,5 +147,6 @@ private:
 	float LastDecisionWorldTimeSeconds = 0.0f;
 	bool bHasLastDecisionRequest = false;
 	bool bWaitingForLevelStart = false;
+	bool bMatchCombatEnded = false;
 	TWeakObjectPtr<AAesirLevelFlowDirector> StartupFlowDirector;
 };

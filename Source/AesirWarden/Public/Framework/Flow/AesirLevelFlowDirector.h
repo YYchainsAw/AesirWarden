@@ -49,6 +49,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Aesir|Level Flow")
 	bool SkipOpeningCinematic();
 
+	/** Enter local combat with the registered match objective. */
+	UFUNCTION(BlueprintCallable, Category = "Aesir|Level Flow|Combat")
+	bool BeginBossCombat(AActor* PrimaryHostile);
+
+	UFUNCTION(BlueprintCallable, Category = "Aesir|Level Flow|Combat")
+	void EndBossCombat(bool bReturnToExploration = true);
+
 	UPROPERTY(BlueprintAssignable, Category = "Aesir|Level Flow")
 	FAesirLevelFlowStateChanged OnFlowStateChanged;
 
@@ -82,6 +89,10 @@ protected:
 
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Aesir|Level Flow|Scene")
 	TObjectPtr<ACameraActor> MenuCamera;
+
+	/** First-level objective, independent of companion service availability. */
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Aesir|Level Flow|Combat")
+	TObjectPtr<AActor> PrimaryMatchBoss;
 
 	/** Optional placed Sequence actor. Keep its Auto Play disabled in the level. */
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Aesir|Level Flow|Scene")
@@ -167,6 +178,7 @@ private:
 	bool bOpeningPresentationPending = false;
 	bool bWaitingForGameplayStreaming = false;
 	bool bMenuFocusInitialized = false;
+	bool bRetryPending = false;
 	FText OpeningFailureStatus;
 	TMap<TWeakObjectPtr<UUserWidget>, ESlateVisibility> HiddenGameplayHUD;
 };

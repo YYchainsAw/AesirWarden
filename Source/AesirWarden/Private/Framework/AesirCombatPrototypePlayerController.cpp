@@ -6,6 +6,8 @@
 #include "Engine/LocalPlayer.h"
 #include "InputMappingContext.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
+#include "UI/AesirCombatResultWidget.h"
 #include "AesirWarden.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "EnhancedInputComponent.h"
@@ -286,6 +288,13 @@ void AAesirCombatPrototypePlayerController::OnPossess(APawn* InPawn)
 	SetCompanionChatOpen(false, false);
 	UnbindPawnHealth();
 	Super::OnPossess(InPawn);
+	if (IsLocalPlayerController())
+	{
+		if (auto* Mode = GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>())
+		{
+			Mode->RegisterMatchPlayer(InPawn);
+		}
+	}
 	if (InPawn)
 	{
 		ChatPawnHealth = InPawn->FindComponentByClass<UAesirHealthComponent>();
@@ -329,6 +338,20 @@ void AAesirCombatPrototypePlayerController::HandleConversationReset()
 void AAesirCombatPrototypePlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	SetCompanionChatOpen(false, false);
+	if (CombatResultWidget)
+	{
+		CombatResultWidget->OnRetryRequested.RemoveDynamic(this, &AAesirCombatPrototypePlayerController::HandleResultRetry);
+		CombatResultWidget->OnReturnToMenuRequested.RemoveDynamic(this, &AAesirCombatPrototypePlayerController::HandleResultReturnToMenu);
+		CombatResultWidget->OnQuitRequested.RemoveDynamic(this, &AAesirCombatPrototypePlayerController::HandleResultQuit);
+		CombatResultWidget->RemoveFromParent();
+		CombatResultWidget = nullptr;
+	}
+	if (bOwnsResultInputLocks)
+	{
+		SetIgnoreMoveInput(false);
+		SetIgnoreLookInput(false);
+		bOwnsResultInputLocks = false;
+	}
 	UnbindPawnHealth();
 	if (UGameInstance* Instance = GetGameInstance())
 	{
@@ -348,5 +371,67 @@ void AAesirCombatPrototypePlayerController::EndPlay(const EEndPlayReason::Type E
 		CompanionChatWidget = nullptr;
 	}
 	Super::EndPlay(EndPlayReason);
+}
+
+bool AAesirCombatPrototypePlayerController::PresentCombatResult(EAesirMatchResult Result)
+{
+	if (!IsLocalPlayerController() || Result == EAesirMatchResult::None) { return false; }
+	if (CombatResultWidget) { return CombatResultWidget->GetDisplayedResult() == Result; }
+	SetCompanionChatOpen(false, false);
+	TArray<UUserWidget*> Existing;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(this, Existing, UAesirCombatResultWidget::StaticClass(), true);
+	for (UUserWidget* Widget : Existing)
+	{
+		if (Widget && Widget->GetOwningPlayer() == this)
+		{
+			CombatResultWidget = Cast<UAesirCombatResultWidget>(Widget);
+			break;
+		}
+	}
+	if (!CombatResultWidget)
+	{
+		UClass* WidgetClass = CombatResultWidgetClass.LoadSynchronous();
+		if (!WidgetClass || !WidgetClass->IsChildOf(UAesirCombatResultWidget::StaticClass()))
+		{
+			WidgetClass = UAesirCombatResultWidget::StaticClass();
+		}
+		CombatResultWidget = CreateWidget<UAesirCombatResultWidget>(this, WidgetClass);
+	}
+	if (!CombatResultWidget) { return false; }
+	CombatResultWidget->SetMatchResult(Result);
+	CombatResultWidget->OnRetryRequested.AddUniqueDynamic(this, &AAesirCombatPrototypePlayerController::HandleResultRetry);
+	CombatResultWidget->OnReturnToMenuRequested.AddUniqueDynamic(this, &AAesirCombatPrototypePlayerController::HandleResultReturnToMenu);
+	CombatResultWidget->OnQuitRequested.AddUniqueDynamic(this, &AAesirCombatPrototypePlayerController::HandleResultQuit);
+	if (!CombatResultWidget->IsInViewport()) { CombatResultWidget->AddToViewport(200); }
+	if (!bOwnsResultInputLocks)
+	{
+		SetIgnoreMoveInput(true);
+		SetIgnoreLookInput(true);
+		bOwnsResultInputLocks = true;
+	}
+	FInputModeUIOnly InputMode;
+	InputMode.SetWidgetToFocus(CombatResultWidget->TakeWidget());
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	SetInputMode(InputMode);
+	FlushPressedKeys();
+	SetShowMouseCursor(true);
+	CombatResultWidget->FocusDefaultAction();
+	UE_LOG(LogAesirWarden, Display, TEXT("Match result UI: %s widget=%s"), *UEnum::GetValueAsString(Result), *CombatResultWidget->GetPathName());
+	return true;
+}
+
+void AAesirCombatPrototypePlayerController::HandleResultRetry()
+{
+	if (AAesirCombatPrototypeGameMode* Mode = GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>()) { Mode->RequestRetryMatch(); }
+}
+
+void AAesirCombatPrototypePlayerController::HandleResultReturnToMenu()
+{
+	if (AAesirCombatPrototypeGameMode* Mode = GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>()) { Mode->RequestReturnToMenu(); }
+}
+
+void AAesirCombatPrototypePlayerController::HandleResultQuit()
+{
+	if (AAesirCombatPrototypeGameMode* Mode = GetWorld()->GetAuthGameMode<AAesirCombatPrototypeGameMode>()) { Mode->RequestQuitMatch(); }
 }
 
