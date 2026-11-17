@@ -11,6 +11,7 @@
 
 class AAesirBossAIController;
 class UAesirBossObservationComponent;
+class UAesirBossProcessSubsystem;
 
 UCLASS(ClassGroup = (Aesir), meta = (BlueprintSpawnableComponent))
 class AESIRWARDEN_API UAesirBossPolicyClientComponent
@@ -30,7 +31,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Aesir|AI|Boss|Policy")
 	bool IsRunning() const;
 
+protected:
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 private:
+	UAesirBossProcessSubsystem* GetProcessHost() const;
 	void RequestDecision();
 	void HandleDecisionResponse(
 		FHttpRequestPtr Request,

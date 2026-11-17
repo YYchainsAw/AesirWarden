@@ -8,6 +8,7 @@
 #include "AI/Boss/AesirBossTelemetryComponent.h"
 #include "AI/Boss/AesirBossAIController.h"
 #include "Dom/JsonObject.h"
+#include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "HAL/PlatformTime.h"
 #include "HttpModule.h"
@@ -16,6 +17,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
+#include "Services/Boss/AesirBossProcessSubsystem.h"
 #include "TimerManager.h"
 
 UAesirBossPolicyClientComponent::UAesirBossPolicyClientComponent()
@@ -37,6 +39,11 @@ void UAesirBossPolicyClientComponent::Start(AActor* InitialTarget)
 	TargetActor = InitialTarget;
 	ConsecutiveFailures = 0;
 	bRunning = true;
+	if (UAesirBossProcessSubsystem* Host = GetProcessHost(); Host && Host->IsEnabled() &&
+		Host->GetState() == EAesirBossProcessState::Stopped)
+	{
+		Host->Start();
+	}
 
 	if (UWorld* World = GetWorld())
 	{
@@ -58,9 +65,24 @@ void UAesirBossPolicyClientComponent::Stop()
 
 	if (ActiveRequest.IsValid())
 	{
+		ActiveRequest->OnProcessRequestComplete().Unbind();
 		ActiveRequest->CancelRequest();
 		ActiveRequest.Reset();
 	}
+	TargetActor = nullptr;
+	PendingObservation = FAesirBossObservation();
+}
+
+void UAesirBossPolicyClientComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Stop();
+	Super::EndPlay(EndPlayReason);
+}
+
+UAesirBossProcessSubsystem* UAesirBossPolicyClientComponent::GetProcessHost() const
+{
+	UGameInstance* Instance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+	return Instance ? Instance->GetSubsystem<UAesirBossProcessSubsystem>() : nullptr;
 }
 
 bool UAesirBossPolicyClientComponent::IsRunning() const
@@ -74,6 +96,19 @@ void UAesirBossPolicyClientComponent::RequestDecision()
 		!IsValid(Controller) || !IsValid(ObservationComponent))
 	{
 		return;
+	}
+
+	FString DecisionBaseUrl = ServiceBaseUrl;
+	if (UAesirBossProcessSubsystem* Host = GetProcessHost(); Host && Host->IsEnabled())
+	{
+		if (Host->GetState() == EAesirBossProcessState::Starting) return;
+		if (!Host->IsReady())
+		{
+			Stop();
+			Controller->ActivateBehaviorTreeFallback(TEXT("local_process_") + Host->GetFailureReason());
+			return;
+		}
+		DecisionBaseUrl = Host->GetServiceBaseUrl();
 	}
 
 	AActor* Target = ResolveTarget();
@@ -119,7 +154,7 @@ void UAesirBossPolicyClientComponent::RequestDecision()
 	const TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request =
 		FHttpModule::Get().CreateRequest();
 	Request->SetURL(
-		ServiceBaseUrl + TEXT("/v1/boss/policy/decide"));
+		DecisionBaseUrl + TEXT("/v1/boss/policy/decide"));
 	Request->SetVerb(TEXT("POST"));
 	Request->SetTimeout(RequestTimeoutSeconds);
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
@@ -193,6 +228,24 @@ void UAesirBossPolicyClientComponent::HandleDecisionResponse(
 	{
 		RegisterFailure(TEXT("protocol_mismatch"));
 		return;
+	}
+
+	if (UAesirBossProcessSubsystem* Host = GetProcessHost(); Host && Host->IsEnabled())
+	{
+		if (!Host->IsReady())
+		{
+			Stop();
+			Controller->ActivateBehaviorTreeFallback(TEXT("local_process_") + Host->GetFailureReason());
+			return;
+		}
+		FString ReleaseId, ModelSha256;
+		if (!Root->TryGetStringField(TEXT("release_id"), ReleaseId) ||
+			!Root->TryGetStringField(TEXT("model_sha256"), ModelSha256) ||
+			!Host->MatchesModel(ModelId, ReleaseId, ModelSha256))
+		{
+			RegisterFailure(TEXT("local_model_identity_mismatch"));
+			return;
+		}
 	}
 
 	if (UAesirBossTelemetryComponent* Telemetry =
