@@ -30,6 +30,9 @@ __pycache__/
 *.pfx
 *.key
 
+# Local Boss policy runtime, models and release inventory.
+/ThirdParty/BossPolicy/Windows/
+
 # Public repository: allow project-authored systems and selected animation setup.
 # Third-party source assets, animation sequences with licensed motion data, the
 # template-based level and its external actor data stay out of the repository.

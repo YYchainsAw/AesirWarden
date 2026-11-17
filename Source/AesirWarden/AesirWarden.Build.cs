@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
+using System.IO;
 
 public class AesirWarden : ModuleRules
 {
@@ -38,8 +39,33 @@ public class AesirWarden : ModuleRules
 			"MovieScene",
 			"HTTP",
 			"Json",
-			"JsonUtilities"
+			"JsonUtilities",
+			"Sockets"
 		});
+
+		if (Target.Platform == UnrealTargetPlatform.Win64)
+		{
+			PublicSystemLibraries.Add("bcrypt.lib");
+
+			if (!Target.bBuildEditor)
+			{
+				string BossPolicyDirectory = Path.GetFullPath(Path.Combine(
+					ModuleDirectory, "..", "..", "ThirdParty", "BossPolicy", "Windows"));
+				// Re-evaluate the receipt when a runtime is restored after an earlier BT-only build.
+				ExternalDependencies.Add(Path.Combine(BossPolicyDirectory, "release-manifest.json"));
+				if (Directory.Exists(BossPolicyDirectory))
+				{
+					foreach (string SourceFile in Directory.EnumerateFiles(
+						BossPolicyDirectory, "*", SearchOption.AllDirectories))
+					{
+						string RelativePath = Path.GetRelativePath(BossPolicyDirectory, SourceFile).Replace('\\', '/');
+						RuntimeDependencies.Add("$(TargetOutputDir)/BossPolicy/" + RelativePath,
+							SourceFile, StagedFileType.NonUFS);
+						ExternalDependencies.Add(SourceFile);
+					}
+				}
+			}
+		}
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
